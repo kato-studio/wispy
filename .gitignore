@@ -1,0 +1,11 @@
+# build
+build
+temp
+
+# logs
+logs
+*.log
+
+# env
+.env
+
