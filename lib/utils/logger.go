@@ -99,6 +99,6 @@ func ServerPrint(str string) {
 	logger.Print("----------------")
 }
 
-func Print(str string) {
+func Print(str interface{}) {
 	logger.Print(str)
 }

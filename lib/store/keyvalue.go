@@ -53,11 +53,11 @@ func DeleteGlobalStingMap(name string) {
 }
 
 type SmallIntStoreInstance struct {
-	Store  func() types.IntMap
-	Get    func(key int) string
-	Set    func(key int, value string) string
-	Sorted func() types.IntMap
-	Delete func(key int) types.IntMap
+	Store      func() types.IntMap
+	Get        func(key int) string
+	Set        func(key int, value string) string
+	SortedKeys func() []int
+	Delete     func(key int) types.IntMap
 }
 
 func SmallIntStore() SmallIntStoreInstance {
@@ -74,8 +74,8 @@ func SmallIntStore() SmallIntStoreInstance {
 			value[key] = keyValue
 			return value[key]
 		},
-		Sorted: func() map[int]string {
-			return utils.SortIntMap(value)
+		SortedKeys: func() []int {
+			return utils.SortIntKeys(value)
 		},
 		Delete: func(key int) types.IntMap {
 			delete(value, key)
@@ -85,11 +85,11 @@ func SmallIntStore() SmallIntStoreInstance {
 }
 
 type SmallStrStoreInstance struct {
-	Store  func() types.StrMap
-	Get    func(key string) string
-	Set    func(key string, value string) string
-	Sorted func() types.StrMap
-	Delete func(key string) types.StrMap
+	Store      func() types.StrMap
+	Get        func(key string) string
+	Set        func(key string, value string) string
+	SortedKeys func() []string
+	Delete     func(key string) types.StrMap
 }
 
 func SmallStrStore() SmallStrStoreInstance {
@@ -106,8 +106,8 @@ func SmallStrStore() SmallStrStoreInstance {
 			value[key] = keyValue
 			return value[key]
 		},
-		Sorted: func() map[string]string {
-			return utils.SortStrMap(value)
+		SortedKeys: func() []string {
+			return utils.SortStrKeys(value)
 		},
 		Delete: func(key string) map[string]string {
 			delete(value, key)

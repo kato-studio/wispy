@@ -5,8 +5,8 @@ package main
 
 import (
 	"fmt"
-	"kato-studio/katoengine/lib/engine"
 	"kato-studio/katoengine/lib/engine/static"
+	"kato-studio/katoengine/lib/engine/template"
 	"kato-studio/katoengine/lib/store"
 	"kato-studio/katoengine/lib/utils"
 	"log"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
+	"github.com/tidwall/gjson"
 )
 
 func main() {
@@ -60,25 +61,34 @@ func main() {
 	const componentsDir = "./view/components"
 	static.LoadAllComponents(componentsDir)
 
+	var default_data = `{
+		"stars": ["STAR", "STAR-STAR", "STAR-STAR-STAR", "STAR-STAR-STAR-STAR", "STAR-STAR-STAR-STAR-STAR"],
+		"page": {
+			"title": "Home",
+			"url": "/page/url/home",
+		},
+		"links":["link1", "link2", "link3"],
+		"clients": ["client1", "client2", "client3"],
+		"data": {
+			"is_logged_in":"true",
+		}
+	}`
+
 	app.Get("static", func(c *fiber.Ctx) error {
 		// render all pages and folders
-		var empty interface{}
-		static.RenderFolder(pagesDir, empty)
+		static.RenderFolder(pagesDir, gjson.Parse(default_data))
 
 		return c.SendString("Rendered all pages and folders")
-
 	})
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		// timer start to log processing time
-		var empty interface{}
-
 		pageBytes, err := os.ReadFile("./view/pages/+page.kato")
 		if err != nil {
 			utils.Fatal(fmt.Sprint(err))
 		}
 
-		fileData := engine.Render(pageBytes, empty, components.Store())
+		fileData := template.Render(string(pageBytes), gjson.Parse(default_data), components.Store())
 
 		c.Set("Content-Type", "text/html")
 		return c.Send([]byte(fileData))

@@ -18,9 +18,9 @@
       Hello world, this is a {%page.url} with a plus sign in the name.
     </p>
     <div>
-      <%each {%data.clients} | client>
+      <%each {%clients} | client>
         <p>{%client}</p>
-                                                                                                                                                                                                                                  
+      </%each>                                                                                                                                                                                                 
     </div>
     <div>
       <%each {%stars} | star>
