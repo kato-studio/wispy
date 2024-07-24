@@ -10,18 +10,18 @@ import (
 
 func InsertData(content string, data gjson.Result) string {
 	result := content
-	contentLen := len(content)
-	currentTag := ""
+	content_len := len(content)
+	current_tag := ""
 
-	for i := 2; i < contentLen; i++ {
+	for i := 2; i < content_len; i++ {
 		//
 		if content[i] == '}' {
-			result = strings.Replace(result, "{%"+currentTag+"}", data.Get(currentTag).String(), 1)
+			result = strings.Replace(result, "{%"+current_tag+"}", data.Get(current_tag).String(), 1)
 			continue
 		}
 		//
-		if content[i-2] == '{' && content[i-1] == '%' || len(currentTag) > 0 {
-			currentTag += string(content[i])
+		if content[i-2] == '{' && content[i-1] == '%' || len(current_tag) > 0 {
+			current_tag += string(content[i])
 		}
 	}
 
@@ -30,16 +30,16 @@ func InsertData(content string, data gjson.Result) string {
 
 func ConvertFromStringToType(value string) interface{} {
 	// Try to convert to boolean
-	if boolVal, err := strconv.ParseBool(value); err == nil {
-		return boolVal
+	if bool_val, err := strconv.ParseBool(value); err == nil {
+		return bool_val
 	}
 	// Try to convert to integer
-	if intVal, err := strconv.Atoi(value); err == nil {
-		return intVal
+	if int_val, err := strconv.Atoi(value); err == nil {
+		return int_val
 	}
 	// Try to convert to float
-	if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
-		return floatVal
+	if float_val, err := strconv.ParseFloat(value, 64); err == nil {
+		return float_val
 	}
 	// If all conversions fail, return the original string
 	return value
@@ -47,13 +47,13 @@ func ConvertFromStringToType(value string) interface{} {
 
 // Handles all logic operations from templates and returns a boolean
 func HandlerOperation(operation string) bool {
-	opParts := strings.Split(operation, " ")
+	op_parts := strings.Split(operation, " ")
 	utils.Debug("~> operation")
 	utils.Debug(operation)
 	utils.Print("opParts -> ")
-	utils.Print(opParts)
+	utils.Print(op_parts)
 	//
-	if len(opParts) != 3 {
+	if len(op_parts) != 3 {
 		if strings.ToLower(operation) == "true" {
 			return true
 		} else {
@@ -61,9 +61,10 @@ func HandlerOperation(operation string) bool {
 		}
 	}
 
-	opType := opParts[1]
-	opLeft := ConvertFromStringToType(opParts[0])
-	opRight := ConvertFromStringToType(opParts[2])
+	// breaking naming convention for better readability
+	opType := op_parts[1]
+	opLeft := ConvertFromStringToType(op_parts[0])
+	opRight := ConvertFromStringToType(op_parts[2])
 
 	switch opType {
 	case ">":
@@ -137,10 +138,10 @@ func StringToBoolean(_logic string) bool {
 	}
 
 	// otherwise return start handling logic operations
-	operationSplitters := []string{"&&", "||"}
-	for _, splitter := range operationSplitters {
-		splitOps := strings.Split(logic, splitter)
-		for _, op := range splitOps {
+	operation_splitters := []string{"&&", "||"}
+	for _, splitter := range operation_splitters {
+		split_ops := strings.Split(logic, splitter)
+		for _, op := range split_ops {
 			result := HandlerOperation(op)
 			if !result {
 				return false

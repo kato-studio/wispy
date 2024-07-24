@@ -20,13 +20,13 @@ func WritePageFile(name string, path string, pageContent string) {
 	}
 
 	// write page content to file
-	pageFile, err := os.Create("./build/" + path + "/" + strings.ReplaceAll(name, "+page.kato", "index.html"))
+	page_file, err := os.Create("./build/" + path + "/" + strings.ReplaceAll(name, "+page.kato", "index.html"))
 	//
 	if err != nil {
 		utils.Fatal(fmt.Sprint(err))
 	}
-	defer pageFile.Close()
-	pageFile.WriteString(pageContent)
+	defer page_file.Close()
+	page_file.WriteString(pageContent)
 }
 
 func RenderFolder(path string, data gjson.Result) {
@@ -42,41 +42,44 @@ func RenderFolder(path string, data gjson.Result) {
 		if page.IsDir() {
 			RenderFolder(path+"/"+page.Name(), data)
 		} else if strings.Contains(page.Name(), ".kato") {
-			pageBytes, err := os.ReadFile(path + "/" + page.Name())
+			page_bytes, err := os.ReadFile(path + "/" + page.Name())
 
 			if err != nil {
 				utils.Fatal(fmt.Sprint(err))
 			}
 
 			// render page
-			fileData := template.Render(string(pageBytes), data, components.Store())
+			file_data := template.Render(string(page_bytes), data, components.Store())
 			// write page to file
-			WritePageFile(page.Name(), path, fileData)
+			WritePageFile(page.Name(), path, file_data)
 		}
 	}
 }
 
 func LoadAllComponents(componentsDir string) {
 	components := store.GlobalByteMap()
-
-	foldersAndFiles, err := os.ReadDir(componentsDir)
+	current_path := componentsDir
+	folders_and_files, err := os.ReadDir(componentsDir)
 	if err != nil {
 		utils.Fatal(fmt.Sprint(err))
 	}
 
-	utils.Debug(fmt.Sprintf("Loading components from %s", componentsDir))
-	utils.Debug(fmt.Sprintf("Found %d components", len(foldersAndFiles)))
-
-	for _, thing := range foldersAndFiles {
+	for _, thing := range folders_and_files {
 		// if page is a folder
 		if thing.IsDir() {
+			LoadAllComponents(current_path + thing.Name() + "/")
 		} else if strings.Contains(thing.Name(), ".kato") {
-			componentBytes, err := os.ReadFile(componentsDir + "/" + thing.Name())
+			path := current_path + thing.Name()
+			clean_path := strings.Replace(current_path + thing.Name(),"./view/components","@",1)
+			component_bytes, err := os.ReadFile(path)
+			utils.Print(clean_path)
 			if err != nil {
 				utils.Fatal(fmt.Sprint(err))
 			}
-			hasSet := components.SafeSet(thing.Name(), componentBytes)
-			if hasSet == nil {
+			//
+			has_set := components.SafeSet(clean_path, component_bytes)
+			fmt.Println("Loading component: ", thing.Name())
+			if has_set == nil {
 				utils.Fatal(fmt.Sprintf("Component the name {%s} already exists", thing.Name()))
 			}
 		}

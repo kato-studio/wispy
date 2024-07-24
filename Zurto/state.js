@@ -8,8 +8,8 @@ export function state(initialValue = null) {
   let _subscribers = [];
 
   const _state = {
-    set: (newValue) => {
-      _value = newValue;
+    set: (new_value) => {
+      _value = new_value;
       _subscribers.forEach((cb) => cb(_value));
     },
     subscribe: (cb) => {

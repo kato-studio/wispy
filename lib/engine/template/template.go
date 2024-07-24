@@ -9,6 +9,7 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
 )
 
 // --------------
@@ -17,73 +18,88 @@ import (
 //
 // --------------
 func Render(raw_content string, data gjson.Result, components map[string][]byte) string {
-	content := utils.CleanString(raw_content)
-
+	utils.Debug("Rendering content")
+	utils.Print(raw_content)
+	clean_content := utils.CleanString(raw_content)
+	imports_string, server_funcs, content := extract.ServerLogic(clean_content)
 	locations := extract.ContentScanner(content)
+	operations_split := store.SmallIntStore()
 
-	operationsSplit := store.SmallIntStore()
+	if(len(imports_string) > 0){
+		utils.Debug("Imports: ")
+		for _, imp := range imports_string {
+			utils.Print(imp)
+		}
+	}
+
+	if(len(server_funcs) > 0){
+		utils.Debug("ServerFuncs: ")
+		for _, server_func := range server_funcs {
+			utils.Print(server_func)
+		}
+	}
 
 	// split at target and then split again at end tag to get the content of the operation ensure all chunks are stored in a store
 	// contentLen := len(content)
 	for index, location := range locations {
 		// preserve leading content
 		if index == 0 {
-			operationsSplit.Set(index, content[:location])
+			operations_split.Set(index, content[:location])
 		}
 
-		rawTagStart := extract.TagName(content[location:])
-		endIndex := -1
+		raw_tag_start := extract.TagName(content[location:])
+		end_index := -1
 
-		tag := extract.TagType(rawTagStart)
+		tag := extract.TagType(raw_tag_start)
 		if tag == "operation" {
-			name := rawTagStart[2:]
-			opEndIndex := extract.FindOperationEndTag(content[location:], name)
+			name := raw_tag_start[2:]
+			op_end_index := extract.FindOperationEndTag(content[location:], name)
 			// uses endIndex to preserve trailing content after component
-			endIndex = location + opEndIndex
+			end_index = location + op_end_index
 
 			// contents from beginning of operation tag to end of operation closing tag
-			extractedOperation := content[location:endIndex]
+			extracted_operation := content[location:end_index]
 
 			// render html from template operation
-			parsedOperation := OperationParser(extractedOperation, name, data, components)
+			parsed_operation := OperationParser(extracted_operation, name, data, components)
 
-			operationsSplit.Set(location, parsedOperation)
+			operations_split.Set(location, parsed_operation)
 		} else if tag == "component" {
-			name := rawTagStart[1:]
+			name := raw_tag_start[1:]
 
-			compEndIndex := extract.ComponentEndTag(content[location:], name)
+			comp_end_index := extract.ComponentEndTag(content[location:], name)
 			// uses endIndex to preserve trailing content after component
-			endIndex = location + compEndIndex
+			end_index = location + comp_end_index
 
 			// contents from beginning of component tag to end of component closing tag
-			extractedComponent := content[location:endIndex]
+			extracted_component := content[location:end_index]
 
-			results := RenderComponent(extractedComponent, name, data, components)
+			results := RenderComponent(extracted_component, name, data, components)
 
-			operationsSplit.Set(location, "{"+name+" Component}"+results)
+			operations_split.Set(location, "{"+name+" Component}"+results)
 		} else {
-			utils.Error("failed to resolve tag type " + rawTagStart)
+			utils.Error("failed to resolve tag type " + raw_tag_start)
 			utils.Error("Exiting from engine.Render()")
-			return "failed to resolve tag type " + rawTagStart
+			return "failed to resolve tag type " + raw_tag_start
 		}
 
 		// // preserve trailing content
 		var limit int = -1
 		if index+1 < len(locations) {
 			limit = locations[index+1]
-			operationsSplit.Set(location+2, content[endIndex:limit])
+			operations_split.Set(location+2, content[end_index:limit])
 		}
 
 	}
 
 	output := ""
 
-	opKeys := operationsSplit.SortedKeys()
-	if len(opKeys) == 0 {
+	op_keys := operations_split.SortedKeys()
+	if len(op_keys) == 0 {
 		output = logic.InsertData(content, data)
 	} else {
-		for _, key := range opKeys {
-			output += logic.InsertData(operationsSplit.Get(key), data)
+		for _, key := range op_keys {
+			output += logic.InsertData(operations_split.Get(key), data)
 		}
 	}
 
@@ -100,14 +116,13 @@ func Render(raw_content string, data gjson.Result, components map[string][]byte)
 func RenderComponent(content string, name string, data gjson.Result, components map[string][]byte) string {
 	result := ""
 
-	optionsString, innerContent := extract.ComponentContent(content, name)
+	options_string, inner_Content := extract.ComponentContent(content, name)
 
 	utils.Debug("Rendering component: " + name)
-	utils.Print(optionsString)
-	utils.Print(innerContent)
+	utils.Print(options_string)
+	utils.Print(inner_Content)
 	utils.Print("-------")
-	// strings.Split(optionsString, "{%")
-	split := strings.Split(optionsString, "{%")
+	split := strings.Split(options_string, "{%")
 	attributes := split[0]
 	data_props := ""
 
@@ -129,13 +144,13 @@ func RenderComponent(content string, name string, data gjson.Result, components 
 //
 // --------------
 func OperationParser(content string, tag string, context_data gjson.Result, components map[string][]byte) string {
-	optionsString, content := extract.OperationContent(content, tag)
+	options_string, content := extract.OperationContent(content, tag)
 
 	switch tag {
 	case "if":
-		content = IfOperation(optionsString, content, context_data, components)
+		content = IfOperation(options_string, content, context_data, components)
 	case "each":
-		content = EachOperation(optionsString, content, context_data, components)
+		content = EachOperation(options_string, content, context_data, components)
 	}
 
 	return content
@@ -148,19 +163,19 @@ func OperationParser(content string, tag string, context_data gjson.Result, comp
 
 </%each>
 */
-func EachOperation(optionsString string, content string, data gjson.Result, components map[string][]byte) string {
-	splitOptions := strings.Split(strings.ReplaceAll(optionsString, " ", ""), "|")
-	if len(splitOptions) != 2 {
+func EachOperation(options_string string, content string, data gjson.Result, components map[string][]byte) string {
+	split_options := strings.Split(strings.ReplaceAll(options_string, " ", ""), "|")
+	if len(split_options) != 2 {
 		utils.Error("Invalid options for each operation")
 		return ""
 	}
 
-	iteratorDataVariable := splitOptions[0][2 : len(splitOptions[0])-1]
-	varName := splitOptions[1]
-	dataArray := data.Get(iteratorDataVariable).Array()
+	iterator_data_variable := split_options[0][2 : len(split_options[0])-1]
+	var_name := split_options[1]
+	data_array := data.Get(iterator_data_variable).Array()
 	result := ""
-	for _, item := range dataArray {
-		data, _ := sjson.Set(data.String(), varName, item.String())
+	for _, item := range data_array {
+		data, _ := sjson.Set(data.String(), var_name, item.String())
 		result += Render(content, gjson.Parse(data), components)
 	}
 
@@ -174,8 +189,8 @@ func EachOperation(optionsString string, content string, data gjson.Result, comp
 
 </%if>
 */
-func IfOperation(optionsString string, content string, data gjson.Result, components map[string][]byte) string {
-	operation := logic.InsertData(optionsString, data)
+func IfOperation(options_string string, content string, data gjson.Result, components map[string][]byte) string {
+	operation := logic.InsertData(options_string, data)
 	value := logic.StringToBoolean(operation)
 	if value {
 		return Render(content, data, components)

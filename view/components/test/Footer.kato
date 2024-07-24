@@ -1,0 +1,9 @@
+<div>
+  <h2>Footer</h2>
+  <p>{company.name}</p>
+  <div>
+    <%each {%links} | link>
+      <a href="{%link}">{%link}</a>
+    </%each>
+  </div>
+</div>

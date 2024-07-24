@@ -8,31 +8,31 @@ type ComponentStoreInstance struct {
 	Delete func(key string) map[string][]byte
 }
 
-var globalByteMapStore = make(map[string][]byte)
+var global_byte_map_store = make(map[string][]byte)
 
 func GlobalByteMap() ComponentStoreInstance {
 	return ComponentStoreInstance{
 		Store: func() map[string][]byte {
-			return globalByteMapStore
+			return global_byte_map_store
 		},
 		Get: func(key string) []byte {
-			return globalByteMapStore[key]
+			return global_byte_map_store[key]
 		},
 		Set: func(key string, keyValue []byte) []byte {
-			globalByteMapStore[key] = keyValue
-			return globalByteMapStore[key]
+			global_byte_map_store[key] = keyValue
+			return global_byte_map_store[key]
 		},
 		SafeSet: func(key string, keyValue []byte) []byte {
-			_, exists := globalByteMapStore[key]
+			_, exists := global_byte_map_store[key]
 			if !exists {
-				globalByteMapStore[key] = keyValue
-				return globalByteMapStore[key]
+				global_byte_map_store[key] = keyValue
+				return global_byte_map_store[key]
 			}
 			return nil
 		},
 		Delete: func(key string) map[string][]byte {
-			delete(globalByteMapStore, key)
-			return globalByteMapStore
+			delete(global_byte_map_store, key)
+			return global_byte_map_store
 		},
 	}
 }

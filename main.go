@@ -58,9 +58,10 @@ func main() {
 	components := store.GlobalByteMap()
 
 	// load all components
-	const componentsDir = "./view/components"
+	const componentsDir = "./view/components/"
+	utils.Debug(fmt.Sprintf("Loading components from %s", componentsDir))
 	static.LoadAllComponents(componentsDir)
-
+	
 	var default_data = `{
 		"stars": ["STAR", "STAR-STAR", "STAR-STAR-STAR", "STAR-STAR-STAR-STAR", "STAR-STAR-STAR-STAR-STAR"],
 		"page": {
@@ -74,7 +75,7 @@ func main() {
 		}
 	}`
 
-	app.Get("static", func(c *fiber.Ctx) error {
+	app.Get("/static", func(c *fiber.Ctx) error {
 		// render all pages and folders
 		static.RenderFolder(pagesDir, gjson.Parse(default_data))
 

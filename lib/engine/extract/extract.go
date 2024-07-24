@@ -1,6 +1,7 @@
 package extract
 
 import (
+	"fmt"
 	"kato-studio/katoengine/lib/utils"
 	"sort"
 	"strings"
@@ -11,13 +12,60 @@ import (
 func ClosestString(content string, target string) int {
 	return strings.Index(content, target)
 }
-func TagType(rawTagStart string) string {
-	if rawTagStart[1] == '%' {
+
+// ---
+// import Header from '@/Header'
+// import Footer from '@/Footer'
+// ---
+func ServerLogic(content string) ([]string,[]string,string)  {
+	imports_strings := []string{}
+	server_funcs := []string{}
+	remaining_content := ""
+	if(len(content) > 6 && content[:3] == "---"){
+		result := content[3:len(content)-6]
+		import_parts := strings.Split(result, "import ")
+		for _, import_string := range import_parts {
+			if strings.Contains(import_string, " from ") {
+				import_split := strings.Split(import_string, " from ")
+				import_string := strings.Join(import_split,":")
+				end_index := ClosestString(import_string, " ")
+				end_of_logic_section := ClosestString(import_string, "---")
+				if (end_index > 0) {
+					server_func_strings := ""
+					if(end_of_logic_section > -1){
+						server_func_strings = import_string[end_index+1:end_of_logic_section]
+						for _, server_func_string := range strings.Split(server_func_strings, ")") {
+							// 2 is an arbitrary number but it works
+							if(len(server_func_string) > 2){
+								server_funcs = append(server_funcs, server_func_string+")")
+							}
+						}
+					}
+					// 
+					imports_strings = append(imports_strings, import_string[:end_index])
+					// 
+					remaining_content = import_string[end_of_logic_section+3:]
+					// 
+					utils.Print("~: "+import_string)
+				}else{
+					imports_strings = append(imports_strings, import_string)
+					utils.Print("~: "+import_string)
+				}
+			}
+		}
+	}else{
+		remaining_content = content
+	}
+	return imports_strings, server_funcs, remaining_content
+}
+
+func TagType(raw_tag_start string) string {
+	if raw_tag_start[1] == '%' {
 		return "operation"
-	} else if rawTagStart[1] >= 'A' && rawTagStart[1] <= 'Z' {
+	} else if raw_tag_start[1] >= 'A' && raw_tag_start[1] <= 'Z' {
 		return "component"
 	}
-	utils.Error("Error: Could not resolve tag type content: \n" + rawTagStart)
+	utils.Error("Error: Could not resolve tag type content: \n" + raw_tag_start)
 	utils.Error("returning unknown from extract.TagType()")
 	return "unknown"
 }
@@ -32,8 +80,8 @@ func TagName(content string) string {
 		}
 
 		// Check if we are at the end of the component name
-		nextChar := content[j]
-		if nextChar == ' ' || nextChar == '>' {
+		next_char := content[j]
+		if next_char == ' ' || next_char == '>' {
 			tag = content[:j]
 			break
 		}
@@ -42,9 +90,11 @@ func TagName(content string) string {
 
 	return tag
 }
+
 func ComponentName(content string) string {
 	return TagName(content[1:])
 }
+
 func OperationName(content string) string {
 	return TagName(content[2:])
 }
@@ -53,48 +103,45 @@ func OperationName(content string) string {
 // It returns the indexes of the start of the component and template operation
 func ContentScanner(content string) []int {
 	results := []int{}
-
-	contentLength := len(content)
-	for i := 0; i < contentLength; i++ {
+	content_length := len(content)
+	for i := 0; i < content_length; i++ {
 		char := content[i]
 		// Check if we are at the end of the content
-		if i+2 > contentLength {
+		if i+2 > content_length {
 			break
 		}
 
-		nextChar := content[i+1]
+		next_char := content[i+1]
 		// Look for template operation start tag "<%"
 		// Look for component start tag "<"+CapitalLetter
 		if char == '<' {
 			// If next char is capital letter, then assume it's a component
-			if nextChar >= 'A' && nextChar <= 'Z' || nextChar == '%' {
+			if next_char >= 'A' && next_char <= 'Z' || next_char == '%' {
 				results = append(results, i)
 				// skip the next char
 				i++
 			}
 		}
-
 	}
-
 	sort.Ints(results)
 
 	return results
 
 }
 
-func ComponentContent(component string, name string) (string, string) {
+func ComponentContent(component string, name string) (options_string string, slot_content string) {
 	if component[len(component)-2:] == "/>" {
 		return component[len(name)+2 : len(component)-2], ""
 	}
-	// closingTag := "</" + name + ">"
-	closingTag := strings.Index(component, "</"+name+">")
-	if closingTag > -1 {
-		startTag := "<" + name
+	// closing_tag := "</" + name + ">"
+	closing_tag := ClosestString(component, "</"+name+">")
+	if closing_tag > -1 {
+		start_tag := "<" + name
 		// +1 to include the closing tag character ">"
-		endOfStartTag := strings.Index(component, ">")
+		end_of_start_tag := ClosestString(component, ">")
 
 		// tag options | nested content
-		return component[len(startTag):endOfStartTag], component[endOfStartTag+1 : closingTag]
+		return component[len(start_tag):end_of_start_tag], component[end_of_start_tag+1 : closing_tag]
 	}
 
 	utils.Error(" -> DoesComponentHaveContent")
@@ -103,41 +150,42 @@ func ComponentContent(component string, name string) (string, string) {
 	return "", ""
 }
 
-func OperationContent(operation string, name string) (string, string) {
+func OperationContent(operation string, name string) (tag_options string, nested_content string) {
 	// closingTag := "</" + name + ">"
-	closingTag := strings.Index(operation, "</%"+name+">")
+	closing_tag := ClosestString(operation, "</%"+name+">")
 	// +1 to include the closing tag character ">"
-	if closingTag > -1 {
-		startTag := "<%" + name
-		endOfStartTag := strings.Index(operation, ">")
+	if closing_tag > -1 {
+		start_tag := "<%" + name
+		end_of_start_tag := ClosestString(operation, ">")
 
 		// tag options | nested content
-		return operation[len(startTag):endOfStartTag], operation[endOfStartTag+1 : closingTag]
+		return operation[len(start_tag):end_of_start_tag], operation[end_of_start_tag+1 : closing_tag]
 	}
 
-	utils.Warn(" -> DoesOperationHaveContent")
+	utils.Warn("-> DoesOperationHaveContent")
+	fmt.Print(operation)
 	utils.Error("could not resolve operation content: \n" + operation)
 
 	return "", ""
 }
 
 func ComponentEndTag(content string, name string) int {
-	contentLength := len(content)
-	for i := 0; i < contentLength; i++ {
+	content_length := len(content)
+	for i := 0; i < content_length; i++ {
 		char := content[i]
 		// Check if we are at the end of the content
-		if i+2 > contentLength {
+		if i+2 > content_length {
 			return -1
 		}
 
-		nextChar := content[i+1]
+		next_char := content[i+1]
 		// Look for component end tag "</"+name+">" or "/>"
-		if char == '/' && nextChar == '>' {
+		if char == '/' && next_char == '>' {
 			return i + 2
 		}
-		endTagLength := len(name) + 3
-		if char == '<' && nextChar == name[0] && content[i:endTagLength] == "<"+name+"/>" {
-			return i + endTagLength
+		end_tag_length := len(name) + 3
+		if char == '<' && next_char == name[0] && content[i:end_tag_length] == "<"+name+"/>" {
+			return i + end_tag_length
 		}
 	}
 
@@ -146,40 +194,40 @@ func ComponentEndTag(content string, name string) int {
 }
 
 func FindOperationEndTag(content string, name string) int {
-	contentLength := len(content)
-	nestedTagsFound := 0
+	content_length := len(content)
+	nested_tags_found := 0
 
-	startTag := "<%" + name + ">"
-	endTag := "</%" + name + ">"
+	start_tag := "<%" + name + ">"
+	end_tag := "</%" + name + ">"
 
-	for i := 0; i < contentLength; i++ {
+	for i := 0; i < content_length; i++ {
 		char := content[i]
 		// Check if we are at the end of the content
-		if i == contentLength-2 {
+		if i == content_length-2 {
 			utils.Print("Error: i+nameLength+4")
 			utils.Error("Could find operation end tag content: \n" + content)
 			return -1
 		}
 
-		nextChar := content[i+1]
-		thirdChar := content[i+2]
+		next_char := content[i+1]
+		third_char := content[i+2]
 		// Look for template operation start tag "<%"
-		startTagLength := len(startTag)
-		endTagLength := len(endTag)
-		if char == '<' && nextChar == '%' && content[i:i+startTagLength] == startTag {
+		start_tag_length := len(start_tag)
+		end_tag_length := len(end_tag)
+		if char == '<' && next_char == '%' && content[i:i+start_tag_length] == start_tag {
 			utils.Debug("nestedTagsFound?!?!? ")
-			nestedTagsFound++
+			nested_tags_found++
 			// Known min length of the characters in the nested tag
-			i = i + startTagLength
+			i = i + start_tag_length
 			continue
 		}
 
-		if char == '<' && nextChar == '/' && thirdChar == '%' && content[i:i+endTagLength] == endTag {
-			if nestedTagsFound == 0 {
-				return i + endTagLength
+		if char == '<' && next_char == '/' && third_char == '%' && content[i:i+end_tag_length] == end_tag {
+			if nested_tags_found == 0 {
+				return i + end_tag_length
 			} else {
-				nestedTagsFound--
-				i = i + endTagLength
+				nested_tags_found--
+				i = i + end_tag_length
 			}
 		}
 	}

@@ -1,3 +1,9 @@
+---
+import Header from '@/Header'
+import Footer from '@/Footer'
+
+%git_users = Fetch('GET:https://api.github.com/users','Content-Type: application/json','{"foo":"bar"}')
+---
 <script>
   console.log('hello from page')
 </script>
@@ -23,8 +29,9 @@
       </%each>                                                                                                                                                                                                 
     </div>
     <div>
-      <%each {%stars} | star>
-        <span>{%star}</span>
+      <%each {%git_users} | user>
+        <p>{%user.login}</p>
+        <a href="{%user.url}">{%user.login}</p>
       </%each>
     </div>
     <Footer onclick="alert('hello from footer')" />
