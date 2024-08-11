@@ -102,27 +102,25 @@ func main() {
 	})
 
 
-	// app.Get("/test", func(c *fiber.Ctx) error {
-	// 	// timer start to log processing time
-	// 	start := time.Now()
+	app.Get("/test", func(c *fiber.Ctx) error {
+		// timer start to log processing time
+		start := time.Now()
 
-	// 	out := new(strings.Builder)
-	// 	json_data := gjson.Parse(default_data)
+		json_data := gjson.Parse(default_data)
+		page_bytes, err := os.ReadFile("./view/pages/+page.kato")
+		utils.Fatal(err)
+
+		rendered_page := template.SlipEngine(page_bytes, json_data)
 		
-	// 	pageBytes, err := os.ReadFile()
-	// 	page_raw := string(page_bytes)
-	// 	utils.Fatal(err)
 
+		c.Set("Content-Type", "text/html")
+		fmt.Println("Processing time: ", time.Since(start))
+		preference_data["/test"] = append(preference_data["/test"], fmt.Sprint(time.Since(start)))
+		return c.SendString(rendered_page)
+	})
 
-		
-	// 	 page_template, err := tmpl.New("+page.kato").Delims("[[", "]]").Parse(page_html)
+	
 
-
-	// 	c.Set("Content-Type", "text/html")
-	// 	fmt.Println("Processing time: ", time.Since(start))
-	// 	preference_data["/kato"] = append(preference_data["/kato"], fmt.Sprint(time.Since(start)))
-	// 	return c.SendString(out.String())
-	// })
 
 	app.Get("/static", func(c *fiber.Ctx) error {
 		// render all pages and folders
@@ -158,7 +156,13 @@ func main() {
 		page_html := string(page_bytes)
 		json_data := gjson.Parse(default_data)
 
-		page_html = template.LoadTemplateComponents(page_html)
+		page_html = template.LoadTemplateComponents(page_html, []string{
+			"Header.html",
+			"Footer.html",
+		})
+
+		utils.Print("html")
+		utils.Print(page_html)
 
 		page_template, err := templ.New("page").Parse(page_html)
 		if err != nil {

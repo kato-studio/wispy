@@ -1,6 +1,7 @@
 package template
 
 import (
+	"html/template"
 	"kato-studio/katoengine/lib/engine/extract"
 	"kato-studio/katoengine/lib/engine/logic"
 	"kato-studio/katoengine/lib/store"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
 )
 
 // --------------
@@ -72,14 +74,15 @@ func Render(raw_content string, data gjson.Result, components map[string][]byte)
 			// contents from beginning of component tag to end of component closing tag
 			extracted_component := content[location:end_index]
 
-			imports_map := map[string]string{}
-			for _, imp := range imports_string {
-				split := strings.Split(imp, ":")
-				// remove any wrapping quotes
-				path := strings.Trim(split[1], "'")
-				path = strings.Trim(path, "\"")
-				imports_map[split[0]] = path
-			}
+			// imports_map := map[string]string{}
+			// for _, imp := range imports_string {
+			// 	split := strings.Split(imp, ":")
+			// 	// remove any wrapping quotes
+			// 	path := strings.Trim(split[1], "'")
+			// 	path = strings.Trim(path, "\"")
+			// 	imports_map[split[0]] = path
+			// }
+			imports_map := extract.ImportsMap(imports_string)
 
 			results := RenderComponent(extracted_component, name, data, imports_map, components)
 
@@ -227,13 +230,29 @@ func IfOperation(options_string string, content string, data gjson.Result, compo
 // ------------ 
 // For testing utils
 // ------------
+func SlipEngine(page_bytes []byte, json_data gjson.Result) string {
+		out := new(strings.Builder)
 
-func LoadTemplateComponents(page_html string) string {
+		page_raw := string(page_bytes)
+
+		// imports_string, server_funcs,
+		imports_string, _, page_html := extract.ServerLogic(page_raw)
+		imports_map := extract.ImportsMap(imports_string)
+		utils.Print(imports_map)
+
+		page_template, err := template.New("+page.kato").Delims("{%", "}").Parse(page_html)
+
+		utils.Fatal(err)
+		
+		err = page_template.Execute(out, json_data.Value())
+		utils.Fatal(err)
+
+		return out.String()
+}
+
+
+func LoadTemplateComponents(page_html string, paths []string) string {
 	const components_dir = "./templates/components/"
-	var paths = []string{
-		"Header.html",
-		"Footer.html",
-	}
 	
 	for _, path := range paths {
 		component_bytes, _ := os.ReadFile(components_dir + path)

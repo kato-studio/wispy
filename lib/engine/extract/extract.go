@@ -5,6 +5,7 @@ import (
 	"kato-studio/katoengine/lib/utils"
 	"sort"
 	"strings"
+
 )
 
 // This as been abstracted to a function
@@ -205,6 +206,19 @@ func ComponentEndTag(content string, name string) int {
 	utils.Error("Error: Could not resolve component end tag content: \n" + content)
 	utils.Error("----------------")
 	return +1
+}
+
+func ImportsMap(imports_string []string) map[string]string {
+	imports_map := map[string]string{}	
+	for _, imp := range imports_string {
+		split := strings.Split(imp, ":")
+		// remove any wrapping quotes
+		path := strings.Trim(split[1], "'")
+		path = strings.Trim(path, "\"")
+		imports_map[split[0]] = path
+	}
+
+	return imports_map
 }
 
 func FindOperationEndTag(content string, name string) int {
