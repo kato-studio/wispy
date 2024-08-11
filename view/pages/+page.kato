@@ -16,8 +16,8 @@ import Footer from '@/Footer'
       data-hello="boop"
       onclick="alert('hello')"
       {%
-        text="Header Text!"
-        subtext="Subtext!"
+        "text":"Header Text!",
+        "subtext":"Subtext!",
       %}
     />
     <p>
@@ -34,6 +34,8 @@ import Footer from '@/Footer'
         <a href="{%user.url}">{%user.login}</p>
       </%each>
     </div>
-    <Footer onclick="alert('hello from footer')" />
+    <Footer onclick="alert('hello from footer')">
+      footer child
+    </Footer>
   </body>
 <html/>

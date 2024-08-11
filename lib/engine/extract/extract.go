@@ -16,6 +16,8 @@ func ClosestString(content string, target string) int {
 // ---
 // import Header from '@/Header'
 // import Footer from '@/Footer'
+// 
+// %git_users = Fetch('GET:https://api.github.com/users','Content-Type: application/json','{"foo":"bar"}')
 // ---
 func ServerLogic(content string) ([]string,[]string,string)  {
 	imports_strings := []string{}
@@ -46,10 +48,8 @@ func ServerLogic(content string) ([]string,[]string,string)  {
 					// 
 					remaining_content = import_string[end_of_logic_section+3:]
 					// 
-					utils.Print("~: "+import_string)
 				}else{
 					imports_strings = append(imports_strings, import_string)
-					utils.Print("~: "+import_string)
 				}
 			}
 		}
@@ -69,6 +69,7 @@ func TagType(raw_tag_start string) string {
 	utils.Error("returning unknown from extract.TagType()")
 	return "unknown"
 }
+
 func TagName(content string) string {
 	tag := ""
 
@@ -170,27 +171,40 @@ func OperationContent(operation string, name string) (tag_options string, nested
 }
 
 func ComponentEndTag(content string, name string) int {
+	start_index := len(name) + 2
 	content_length := len(content)
-	for i := 0; i < content_length; i++ {
+	tag_start_flag := false
+	for i := start_index; i < content_length; i++ {
 		char := content[i]
 		// Check if we are at the end of the content
 		if i+2 > content_length {
-			return -1
+			utils.Error("Error: Could not resolve component end tag content: \n" + content)
+			utils.Error("----------------")
+			return content_length
 		}
 
 		next_char := content[i+1]
+
 		// Look for component end tag "</"+name+">" or "/>"
-		if char == '/' && next_char == '>' {
+		if char == '/' && next_char == '>' && !tag_start_flag {
 			return i + 2
 		}
+
+		// check is second char a letter
+		char_is_letter := next_char >= 'A' && next_char <= 'Z' || next_char >= 'a' && next_char <= 'z'
+		if char == '<' && char_is_letter && !tag_start_flag {
+			tag_start_flag = true
+		}
+		
 		end_tag_length := len(name) + 3
-		if char == '<' && next_char == name[0] && content[i:end_tag_length] == "<"+name+"/>" {
+		if char == '<' && next_char == '/' && content[i:i+end_tag_length] == "</"+name+">" {
 			return i + end_tag_length
 		}
 	}
-
+	
 	utils.Error("Error: Could not resolve component end tag content: \n" + content)
-	return -1
+	utils.Error("----------------")
+	return +1
 }
 
 func FindOperationEndTag(content string, name string) int {

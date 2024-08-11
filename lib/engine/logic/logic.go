@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/tidwall/gjson"
+
 )
 
 func InsertData(content string, data gjson.Result) string {
@@ -16,7 +17,7 @@ func InsertData(content string, data gjson.Result) string {
 	for i := 2; i < content_len; i++ {
 		//
 		if content[i] == '}' {
-			result = strings.Replace(result, "{%"+current_tag+"}", data.Get(current_tag).String(), 1)
+			result = strings.Replace(result, "{%"+current_tag+"}", data.Get(current_tag).String(), -1)
 			continue
 		}
 		//

@@ -1,0 +1,26 @@
+<script>
+  console.log('hello from page')
+</script>
+<html lang="en">
+  <body>
+    {{if .data.is_logged_in}}
+      <p>User is logged in</p>
+    {{end}}
+    {{template "@Header.html" .Header}}
+    <p>
+      Hello world, this is a {{.Page.URL}} with a plus sign in the name.
+    </p>
+    <div>
+      {{range .clients}}
+        <p>{{.}}</p>
+      {{end}}
+    </div>
+    <div>
+      {{range .git_users}}
+        <p>{{.login}}</p>
+        <a href="{{.url}}">{{.login}}</a>
+      {{end}}
+    </div
+    {{template "@Footer.html" .Footer}}
+  </body>
+</html>

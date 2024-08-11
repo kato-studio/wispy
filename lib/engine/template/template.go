@@ -5,21 +5,17 @@ import (
 	"kato-studio/katoengine/lib/engine/logic"
 	"kato-studio/katoengine/lib/store"
 	"kato-studio/katoengine/lib/utils"
+	"os"
 	"strings"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
-
 )
 
 // --------------
-//
 //	COR RENDER
-//
 // --------------
 func Render(raw_content string, data gjson.Result, components map[string][]byte) string {
-	utils.Debug("Rendering content")
-	utils.Print(raw_content)
 	clean_content := utils.CleanString(raw_content)
 	imports_string, server_funcs, content := extract.ServerLogic(clean_content)
 	locations := extract.ContentScanner(content)
@@ -28,14 +24,14 @@ func Render(raw_content string, data gjson.Result, components map[string][]byte)
 	if(len(imports_string) > 0){
 		utils.Debug("Imports: ")
 		for _, imp := range imports_string {
-			utils.Print(imp)
+			utils.Debug(imp)
 		}
 	}
 
 	if(len(server_funcs) > 0){
 		utils.Debug("ServerFuncs: ")
 		for _, server_func := range server_funcs {
-			utils.Print(server_func)
+			utils.Debug(server_func)
 		}
 	}
 
@@ -52,6 +48,7 @@ func Render(raw_content string, data gjson.Result, components map[string][]byte)
 
 		tag := extract.TagType(raw_tag_start)
 		if tag == "operation" {
+			// strip {% from tag name
 			name := raw_tag_start[2:]
 			op_end_index := extract.FindOperationEndTag(content[location:], name)
 			// uses endIndex to preserve trailing content after component
@@ -65,6 +62,7 @@ func Render(raw_content string, data gjson.Result, components map[string][]byte)
 
 			operations_split.Set(location, parsed_operation)
 		} else if tag == "component" {
+			// strip < from tag name
 			name := raw_tag_start[1:]
 
 			comp_end_index := extract.ComponentEndTag(content[location:], name)
@@ -74,9 +72,18 @@ func Render(raw_content string, data gjson.Result, components map[string][]byte)
 			// contents from beginning of component tag to end of component closing tag
 			extracted_component := content[location:end_index]
 
-			results := RenderComponent(extracted_component, name, data, components)
+			imports_map := map[string]string{}
+			for _, imp := range imports_string {
+				split := strings.Split(imp, ":")
+				// remove any wrapping quotes
+				path := strings.Trim(split[1], "'")
+				path = strings.Trim(path, "\"")
+				imports_map[split[0]] = path
+			}
 
-			operations_split.Set(location, "{"+name+" Component}"+results)
+			results := RenderComponent(extracted_component, name, data, imports_map, components)
+
+			operations_split.Set(location, results)
 		} else {
 			utils.Error("failed to resolve tag type " + raw_tag_start)
 			utils.Error("Exiting from engine.Render()")
@@ -112,30 +119,46 @@ func Render(raw_content string, data gjson.Result, components map[string][]byte)
 //
 // --------------
 
-// <Header data-hello="boop" onclick="alert('hello')" {% text="Header Text!" subtext="Subtext!" %} />
-func RenderComponent(content string, name string, data gjson.Result, components map[string][]byte) string {
+// <Header data-hello="boop" onclick="alert('hello')" {% text:"Header Text!" subtext:"Subtext!" %} />
+func RenderComponent(content string, name string, data gjson.Result, imports map[string]string, components map[string][]byte) string {
 	result := ""
-
 	options_string, inner_Content := extract.ComponentContent(content, name)
-
-	utils.Debug("Rendering component: " + name)
-	utils.Print(options_string)
-	utils.Print(inner_Content)
-	utils.Print("-------")
 	split := strings.Split(options_string, "{%")
 	attributes := split[0]
 	data_props := ""
+	component_path := imports[name]+".kato"
+	raw_component := components[component_path]
+	result = string(raw_component)
+	
+	if(raw_component == nil){
+		utils.Error("Component not found: name: "+name+ " path: " + component_path)
+		return ""
+	}
 
+	// handle replacing child content via slot
+	result = strings.Replace(result, "<slot/>", inner_Content, -1)
+	result = strings.Replace(result, "@root", attributes, 1)
+	
 	// if there are data properties in the component
 	if len(split) > 1 {
 		data_props = strings.Trim(strings.Replace(split[1], "%}", "", -1), " ")
+		json_string := strings.Replace("{" + data_props + "}",",}","}",-1)
+
+		isValidJson := gjson.Valid(json_string)
+		if(isValidJson){
+			for key, value := range gjson.Parse(json_string).Map() {
+				dataString := data.String()
+				dataString, _ = sjson.Set(dataString, key, value)
+				data = gjson.Parse(dataString)
+			}
+		}else{
+			utils.Error("Invalid JSON string: " + json_string)
+		}
 	}
 
-	utils.Print(attributes)
-	utils.Print(data_props)
-	utils.Print("-------")
+	render_component := Render(result, data, components)
 
-	return result
+	return render_component
 }
 
 // --------------
@@ -147,10 +170,10 @@ func OperationParser(content string, tag string, context_data gjson.Result, comp
 	options_string, content := extract.OperationContent(content, tag)
 
 	switch tag {
-	case "if":
-		content = IfOperation(options_string, content, context_data, components)
-	case "each":
-		content = EachOperation(options_string, content, context_data, components)
+		case "if":
+			content = IfOperation(options_string, content, context_data, components)
+		case "each":
+			content = EachOperation(options_string, content, context_data, components)
 	}
 
 	return content
@@ -158,9 +181,7 @@ func OperationParser(content string, tag string, context_data gjson.Result, comp
 
 /*
 <%each {%data.clients} | client>
-
 	<p>{%client}</p>
-
 </%each>
 */
 func EachOperation(options_string string, content string, data gjson.Result, components map[string][]byte) string {
@@ -169,6 +190,11 @@ func EachOperation(options_string string, content string, data gjson.Result, com
 		utils.Error("Invalid options for each operation")
 		return ""
 	}
+
+	utils.Debug("EachOperation")
+	utils.Debug(options_string)
+	utils.Debug(content)
+	utils.Debug("----------")
 
 	iterator_data_variable := split_options[0][2 : len(split_options[0])-1]
 	var_name := split_options[1]
@@ -184,9 +210,7 @@ func EachOperation(options_string string, content string, data gjson.Result, com
 
 /*
 <%if {%data.is_logged_in}>
-
 	<p>User is logged in</p>
-
 </%if>
 */
 func IfOperation(options_string string, content string, data gjson.Result, components map[string][]byte) string {
@@ -197,4 +221,25 @@ func IfOperation(options_string string, content string, data gjson.Result, compo
 	} else {
 		return ""
 	}
+}
+
+
+// ------------ 
+// For testing utils
+// ------------
+
+func LoadTemplateComponents(page_html string) string {
+	const components_dir = "./templates/components/"
+	var paths = []string{
+		"Header.html",
+		"Footer.html",
+	}
+	
+	for _, path := range paths {
+		component_bytes, _ := os.ReadFile(components_dir + path)
+		component_html := string(component_bytes)
+		page_html = "{{define \"@" + path + "\"}}" + component_html + "{{end}}" + page_html
+	}
+
+	return page_html
 }
