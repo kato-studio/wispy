@@ -1,6 +1,7 @@
 package template
 
 import (
+	"fmt"
 	"html/template"
 	"kato-studio/katoengine/lib/engine/extract"
 	"kato-studio/katoengine/lib/engine/logic"
@@ -227,29 +228,58 @@ func IfOperation(options_string string, content string, data gjson.Result, compo
 }
 
 
-// ------------ 
-// For testing utils
-// ------------
-func SlipEngine(page_bytes []byte, json_data gjson.Result) string {
+func SlipScanner(content string) []int {
+	// find all components
+	locations := []int{}
+
+	content_length := len(content)-1
+	for i := 0; i < content_length; i++ {
+		// Check if we are at the end of the content
+
+		char := content[i]
+		next_char := content[i+1]
+
+		if char == '<' {
+			// If next char is capital letter, then assume it's a component
+			if next_char >= 'A' && next_char <= 'Z' {
+				locations = append(locations, i)
+				// skip the next char
+				i = i + 5
+			}
+		}
+	}
+
+	return locations
+}
+
+func SlipEngine(name string, page_bytes []byte, json_data gjson.Result) string {
 		out := new(strings.Builder)
 
 		page_raw := string(page_bytes)
+		var err error
+		var page_template *template.Template
 
 		// imports_string, server_funcs,
-		imports_string, _, page_html := extract.ServerLogic(page_raw)
-		imports_map := extract.ImportsMap(imports_string)
-		utils.Print(imports_map)
+		_, _, page_html := extract.ServerLogic(page_raw)
+		// imports_map := extract.ImportsMap(imports_string)
 
-		page_template, err := template.New("+page.kato").Delims("{%", "}").Parse(page_html)
+		component_indexs := SlipScanner(page_html)
+		utils.Print("component_indexs: "+fmt.Sprint(component_indexs))
+		for _, location := range component_indexs {
+			component_name := extract.ComponentName(page_html[location:])
+			clean_name := strings.Replace(strings.Replace(component_name," ", "",-1),"\n", "",-1)
+			component_end_location := extract.ComponentEndTag(page_html[location+2:], clean_name)
 
-		utils.Fatal(err)
-		
-		err = page_template.Execute(out, json_data.Value())
+			component_content := page_html[location:location+component_end_location+2]
+			page_template, err = template.New(clean_name).Parse(component_content)
+			utils.Fatal(err)
+		}
+
+		err = page_template.ExecuteTemplate(out, "page", json_data.Value())
 		utils.Fatal(err)
 
 		return out.String()
 }
-
 
 func LoadTemplateComponents(page_html string, paths []string) string {
 	const components_dir = "./templates/components/"
@@ -262,3 +292,4 @@ func LoadTemplateComponents(page_html string, paths []string) string {
 
 	return page_html
 }
+

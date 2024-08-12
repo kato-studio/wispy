@@ -110,22 +110,17 @@ func main() {
 		page_bytes, err := os.ReadFile("./view/pages/+page.kato")
 		utils.Fatal(err)
 
-		rendered_page := template.SlipEngine(page_bytes, json_data)
-		
+		rendered_page := template.SlipEngine("+page.kato", page_bytes, json_data)
 
 		c.Set("Content-Type", "text/html")
 		fmt.Println("Processing time: ", time.Since(start))
 		preference_data["/test"] = append(preference_data["/test"], fmt.Sprint(time.Since(start)))
 		return c.SendString(rendered_page)
-	})
-
-	
-
+	}) 
 
 	app.Get("/static", func(c *fiber.Ctx) error {
 		// render all pages and folders
 		static.RenderFolder(pagesDir, gjson.Parse(default_data))
-
 
 		return c.SendString("Rendered all pages and folders")
 	})

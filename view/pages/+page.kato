@@ -2,37 +2,34 @@
 import Header from '@/Header'
 import Footer from '@/Footer'
 
-%git_users = Fetch('GET:https://api.github.com/users','Content-Type: application/json','{"foo":"bar"}')
+git_users = Fetch('GET:https://api.github.com/users','Content-Type: application/json','{"foo":"bar"}')
 ---
 <script>
   console.log('hello from page')
 </script>
 <html lang="en">
   <body>
-    <%if {%data.is_logged_in}>
+    {{if .data.is_logged_in}}
       <p>User is logged in</p>
-    </%if>
+    {{end}}
     <Header
       data-hello="boop"
       onclick="alert('hello')"
-      {%
-        "text":"Header Text!",
-        "subtext":"Subtext!",
-      %}
+      x-data="{'foo':'bar'}"
     />
     <p>
-      Hello world, this is a {%page.url} with a plus sign in the name.
+      Hello world, this is a {.page.url} with a plus sign in the name.
     </p>
     <div>
-      <%each {%clients} | client>
-        <p>{%client}</p>
-      </%each>                                                                                                                                                                                                 
+      {{range .clients}}
+        <p>{{.}}</p>
+      {{end}}                                                                                                                                                                                       
     </div>
     <div>
-      <%each {%git_users} | user>
-        <p>{%user.login}</p>
-        <a href="{%user.url}">{%user.login}</p>
-      </%each>
+      {{range .git_users}}
+        <p>{{.login}}</p>
+        <a href="{{.url}}">{{.login}}</a>
+      {{end}}
     </div>
     <Footer onclick="alert('hello from footer')">
       footer child

@@ -20,10 +20,10 @@ func ClosestString(content string, target string) int {
 // 
 // %git_users = Fetch('GET:https://api.github.com/users','Content-Type: application/json','{"foo":"bar"}')
 // ---
-func ServerLogic(content string) ([]string,[]string,string)  {
-	imports_strings := []string{}
-	server_funcs := []string{}
-	remaining_content := ""
+func ServerLogic(content string) (imports_strings []string, server_funcs []string, remaining_content string)  {
+	imports_strings = []string{}
+	server_funcs = []string{}
+	remaining_content = ""
 	if(len(content) > 6 && content[:3] == "---"){
 		result := content[3:len(content)-6]
 		import_parts := strings.Split(result, "import ")
@@ -172,6 +172,10 @@ func OperationContent(operation string, name string) (tag_options string, nested
 }
 
 func ComponentEndTag(content string, name string) int {
+	utils.Print("ComponentEndTag")
+	utils.Print(content)
+	utils.Print("--------------")
+
 	start_index := len(name) + 2
 	content_length := len(content)
 	tag_start_flag := false
@@ -180,7 +184,6 @@ func ComponentEndTag(content string, name string) int {
 		// Check if we are at the end of the content
 		if i+2 > content_length {
 			utils.Error("Error: Could not resolve component end tag content: \n" + content)
-			utils.Error("----------------")
 			return content_length
 		}
 
@@ -191,20 +194,23 @@ func ComponentEndTag(content string, name string) int {
 			return i + 2
 		}
 
-		// check is second char a letter
+		// check is second char a letter to avoid false positives
 		char_is_letter := next_char >= 'A' && next_char <= 'Z' || next_char >= 'a' && next_char <= 'z'
 		if char == '<' && char_is_letter && !tag_start_flag {
+			utils.Print("tag_start_flag = true")
+			utils.Print("because: "+content[i:i+4])
+
 			tag_start_flag = true
 		}
 		
 		end_tag_length := len(name) + 3
 		if char == '<' && next_char == '/' && content[i:i+end_tag_length] == "</"+name+">" {
+		utils.Print("test:"+content[i:i+end_tag_length])
 			return i + end_tag_length
 		}
 	}
 	
 	utils.Error("Error: Could not resolve component end tag content: \n" + content)
-	utils.Error("----------------")
 	return +1
 }
 
