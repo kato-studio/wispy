@@ -1,8 +1,6 @@
-<div @root class="flex">
-  <h2>Header</h2>
-  <div>
-    <%each {%links} | link>
-      <a href="{%link}">{%link}</a>
-    </%each>
-  </div>
-</div>
+<div style="display: flex;">
+  <h4>Header</h4>
+  <%each {{links}} | link>
+    <a href="/{{link}}">{{link}}</a>
+  <each%>
+<div>

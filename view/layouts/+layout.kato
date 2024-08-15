@@ -1,9 +1,0 @@
-<html>
-  <head>
-    <title>Main</title>
-  </head>
-  <h4>Layout Template Loaded</h4>
-  <body>
-    <%slot/>
-  </body>
-</html>

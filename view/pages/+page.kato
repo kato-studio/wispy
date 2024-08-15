@@ -1,38 +1,17 @@
----
-import Header from '@/Header'
-import Footer from '@/Footer'
-
-git_users = Fetch('GET:https://api.github.com/users','Content-Type: application/json','{"foo":"bar"}')
----
-<script>
-  console.log('hello from page')
-</script>
+<!DOCTYPE html>
 <html lang="en">
-  <body>
-    {{if .data.is_logged_in}}
-      <p>User is logged in</p>
-    {{end}}
-    <Header
-      data-hello="boop"
-      onclick="alert('hello')"
-      x-data="{'foo':'bar'}"
-    />
-    <p>
-      Hello world, this is a {.page.url} with a plus sign in the name.
-    </p>
-    <div>
-      {{range .clients}}
-        <p>{{.}}</p>
-      {{end}}                                                                                                                                                                                       
-    </div>
-    <div>
-      {{range .git_users}}
-        <p>{{.login}}</p>
-        <a href="{{.url}}">{{.login}}</a>
-      {{end}}
-    </div>
-    <Footer onclick="alert('hello from footer')">
-      footer child
-    </Footer>
-  </body>
-<html/>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Page</title>
+</head>
+<body>
+  <h1>Welcome to My Page</h1>
+  Hello world, this is a {{page.url}} with a plus sign in the name.
+  <%Header x-data="{'foo':'bar'}" foo="bar" %>
+
+  <%if {{user}} | user>
+    <p>Welcome, {{user.name}}</p>
+  <if%>
+</body>
+</html>
