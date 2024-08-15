@@ -9,3 +9,7 @@ logs
 # env
 .env
 
+
+# Rust / Cargo
+/target
+.cargo
