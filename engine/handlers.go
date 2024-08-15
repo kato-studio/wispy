@@ -25,7 +25,7 @@ func TemplateVariables(template string, json gjson.Result) string {
 }
 
 func TemplateFunctions(tag string, rest string) string{
-	var firstRun = tag[0] 
+	var firstRun = tag[0]
 	if(firstRun > 'A' && firstRun < 'Z') {
 		// Component
 		return "COMPONENT {"+tag+"}"

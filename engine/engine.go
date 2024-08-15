@@ -6,6 +6,7 @@ import (
 	"kato-studio/katoengine/utils"
 
 	"github.com/tidwall/gjson"
+
 )
 
 func SlipEngine(template string, json gjson.Result) string {
@@ -28,3 +29,4 @@ func SlipEngine(template string, json gjson.Result) string {
 
 	return output
 }
+
