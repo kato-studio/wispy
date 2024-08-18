@@ -1,0 +1,57 @@
+<!-- /Parent.kato -->
+<div @root class="flex">
+  <h2>parent here</h2>
+  <small> child here</small>
+  <div>
+    {{#slot}}
+  </div>
+</div>
+
+
+<!-- /Footer.kato -->
+<div @root>
+  <h2>Footer</h2>
+  <p>{{company.name}}</p>
+  <div>
+    {{#for link in .links}}
+      <a href="{{.link.url}}">{{.link.text}}</a>
+    {{/for}}
+  </div>
+<div>
+
+<!-- /Header.kato -->
+<div @root class="flex">
+  <h2>Header</h2>
+  <div>
+    {{#for link in .links}}
+      <a href="{{link.url}}">{{link.text}}</a>
+    {{/for}}
+  </div>
+</div>
+
+
+<!-- /+Page.kato -->
+<script>
+  console.log('hello from page')
+</script>
+
+{{#include 'comps/Header.kato' (links:{{.links}}) }}
+  <Header foo="bar"/>
+{{/include}}
+
+<h1>Home page</h1>
+{{#include 'comps/Parent.kato' (links:{{.links}}, company:{{.company}}) }}
+  <Parent>
+    <ul>
+      <li>Item 1</li>
+      <li>Item 2</li>
+      <li>Item 3</li>
+    </ul>
+  </Parent>
+{{/include}}
+
+{{#if .user}}
+
+{{#include 'comps/Footer.kato' (links:{{.links}}, company:{{.company}}) }}
+  <Footer foo="bar"/>
+{{/include}}

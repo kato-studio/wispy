@@ -1,0 +1,7 @@
+<div @root class="flex">
+  <h2>parent here</h2>
+  <small> child here</small>
+  <div>
+    {{#slot}}
+  </div>
+</div>

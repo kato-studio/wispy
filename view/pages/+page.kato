@@ -1,17 +1,21 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Page</title>
-</head>
-<body>
-  <h1>Welcome to My Page</h1>
-  Hello world, this is a {{page.url}} with a plus sign in the name.
-  <%Header x-data="{'foo':'bar'}" foo="bar" %>
+{{#include "comps/Parent" Parent }}
+{{#include "comps/Header" Header }}
+{{#include "comps/Footer" Footer }}
 
-  <%if {{user}} | user>
-    <p>Welcome, {{user.name}}</p>
-  <if%>
-</body>
-</html>
+<script>
+  console.log('hello from page')
+</script>
+
+<Header foo="bar" (links:{{.links}}) />
+
+<h1>Home page</h1>
+
+<Parent json(links:{{.links}}, company:{{.company}})>
+  <ul>
+    <li>Item 1</li>
+    <li>Item 2</li>
+    <li>Item 3</li>
+  </ul>
+</Parent>
+
+<Footer foo="bar" json(links:{{.links}}, company:{{.company}})/>
