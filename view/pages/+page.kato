@@ -1,21 +1,27 @@
-{{#include "comps/Parent" Parent }}
-{{#include "comps/Header" Header }}
-{{#include "comps/Footer" Footer }}
+#include (c/Parent as Parent)
+#include (c/Header as Header)
+#include (c/Footer as Footer)
 
 <script>
   console.log('hello from page')
 </script>
 
-<Header foo="bar" (links:{{.links}}) />
+#render(
+  <Header foo="bar" props(links:{{.links}}) />
+)
 
 <h1>Home page</h1>
 
-<Parent json(links:{{.links}}, company:{{.company}})>
-  <ul>
-    <li>Item 1</li>
-    <li>Item 2</li>
-    <li>Item 3</li>
-  </ul>
-</Parent>
+#render(
+  <Parent props(links:{{.links}}, company:{{.company}})>
+    <ul>
+      <li>Item 1</li>
+      <li>Item 2</li>
+      <li>Item 3</li>
+    </ul>
+  </Parent>
+)
 
-<Footer foo="bar" json(links:{{.links}}, company:{{.company}})/>
+#render(
+  <Footer foo="bar" />
+)

@@ -1,8 +1,8 @@
 <div @root class="flex">
   <h2>Header</h2>
   <div>
-    {{#for link in .links}}
-      <a href="{{link.url}}">{{link.text}}</a>
-    {{/for}}
+    #for($page.links as $link)
+      <a href="{{$link.url}}">{{$link.text}}</a>
+    #endfor
   </div>
 </div>

@@ -2,8 +2,8 @@
   <h2>Footer</h2>
   <p>{{company.name}}</p>
   <div>
-    {{#for link in .links}}
+    #for(link in .links)
       <a href="{{.link.url}}">{{.link.text}}</a>
-    {{/for}}
+    #endfor
   </div>
 <div>

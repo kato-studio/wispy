@@ -2,6 +2,6 @@
   <h2>parent here</h2>
   <small> child here</small>
   <div>
-    {{#slot}}
+    #slot()
   </div>
 </div>
