@@ -3,40 +3,21 @@ package engine
 import (
 	"kato-studio/katoengine/utils"
 	"strings"
-
 )
 
 // TemplateFunctions processes the template based on the tag type
-func TemplateFunctions(tag string, rest string) string {
-    utils.Print("tag: "+tag)
+func TemplateFunctions(content string) string {
+    utils.Print("tag: "+content)
     switch {
-    case strings.HasPrefix(tag, "include"):
-        return handleInclude(rest)
-    case strings.HasPrefix(tag, "component"):
-        return handleComponent(rest)
-    case strings.HasPrefix(tag, "if"):
-        return handleIf(rest)
-    case strings.HasPrefix(tag, "each"):
-        return handleEach(rest)
-    case strings.HasPrefix(tag, "for"):
-        return handleFor(rest)
+    case strings.HasPrefix(content, "if"):
+        return handleIf(content)
+    case strings.HasPrefix(content, "each"):
+        return handleEach(content)
+    case strings.HasPrefix(content, "for"):
+        return handleFor(content)
     default:
-        return rest
+        return content
     }
-}
-
-// handleInclude processes the include tag
-func handleInclude(rest string) string {
-    // Implement include logic here
-    // Example: parse the included file and return its content
-    return "<!-- Include logic -->"
-}
-
-// handleComponent processes the component tag
-func handleComponent(rest string) string {
-    // Implement component logic here
-    // Example: parse the component and return its content
-    return "<!-- Component logic -->"
 }
 
 // handleIf processes the if tag

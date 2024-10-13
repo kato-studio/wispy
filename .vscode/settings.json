@@ -1,8 +1,10 @@
 {
   "cSpell.words": [
+    "fasttemplate",
     "gjson",
     "joho",
     "serverfuncs",
-    "templ"
+    "templ",
+    "templating"
   ]
 }
