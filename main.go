@@ -89,7 +89,6 @@ func main() {
 		pageBytes, err := os.ReadFile("./view/pages/+page.kato")
 		utils.Fatal(err)
 
-		engine.CustomTemplateEngine(string(pageBytes))
 		page := engine.SlipEngine(string(pageBytes), gjson.Parse(default_data))
 
 		fmt.Println("Processing time: ", time.Since(start))
