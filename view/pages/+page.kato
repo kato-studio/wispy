@@ -11,7 +11,7 @@
 <h1>Home page</h1>
 <#if(wecomeMessage)>
   <h2>{{.welcomeMessage}}</h2>
-</#for>
+</#if>
 
 <#Parent(links:{{.links}}, company:{{.company}})>
   <ul>
