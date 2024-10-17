@@ -1,9 +1,9 @@
-<div @root>
+<div #root>
   <h2>Footer</h2>
   <p>{{company.name}}</p>
   <div>
-    #for(link in .links)
+    <#for(link in .links)
       <a href="{{.link.url}}">{{.link.text}}</a>
-    #endfor
+    </#for>
   </div>
 <div>

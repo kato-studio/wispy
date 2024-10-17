@@ -1,134 +1,132 @@
 package engine
 
 import (
+	"bufio"
 	"fmt"
-	"io"
-	"kato-studio/katoengine/utils"
-	"os"
+	"regexp"
 	"strings"
 
 	"github.com/tidwall/gjson"
-	"github.com/valyala/fasttemplate"
 )
 
+func CustomTemplateEngine(html string) string {
+	// Regular expression to match custom elements
+	re := regexp.MustCompile(`<#[A-z]((.|\n)*?)>`)
+
+	// Process all matches
+	for {
+		match := re.FindStringSubmatch(html)
+		if match == nil {
+			break
+		}
+
+		element := match[0]
+		// attrs := match[1]
+		// content := match[2]
+
+		fmt.Println("Element:", element)
+		// fmt.Println("Attributes:", attrs)
+		// fmt.Println("Content:", content)
+
+		// Call the appropriate render function
+		html = strings.Replace(html, match[0], "", 1)
+			// If no render function is found, remove the custom element tags
+			// html = strings.Replace(html, match[0], content, 1)
+	}
+
+	return html
+}
+ 
 func SlipEngine(template string, json gjson.Result) string {
-	var result string
-	var included_components map[string]string = make(map[string]string)
-	template = utils.CleanString(template)
+	var result string = ""
 
-	// Handle filling in variables
-	init_data := fasttemplate.New(template, "{{.", "}}")
-	result = init_data.ExecuteFuncString(func(w io.Writer, content string) (int, error) {
-		if(json.Get(content).Exists()) {
-			return w.Write([]byte(json.Get(content).String()))
+  s := bufio.NewScanner(strings.NewReader(template))
+  s.Split(bufio.ScanWords)
+  
+	var token string
+	var last_token string 
+	var current string = ""
+
+	for s.Scan() {
+		token = strings.Split(s.Text(), "")[0]
+		text := s.Text()
+
+		// 
+		if last_token == "<" && token == "#" {
+			current += fmt.Sprint(token, text)
+			continue
+		}else if(last_token != "#") {
+			continue
 		}
-		return w.Write([]byte(""))
-	})
+		if(len(current) < 1) { continue }
 
-	// Core templating functionality
-	templ_func := fasttemplate.New(result, "{{#", "}}")
-	result = templ_func.ExecuteFuncString(func(w io.Writer, content string) (int, error) {
-		if(strings.HasPrefix(content, "include")){
-			// Handle includes/imports
-			// skip the first 8 characters and split the rest at the first space this is to ignore the include tag
-			var comp_path, comp_name = utils.SplitAtRune(content[8:], ' ')
-			if(comp_name == ""){
-				utils.Error("failed to import component: "+content)
-			}
-			
-			// find component at path and set it's content to 
-			valid_path := "./view/"+strings.Replace(comp_path, "c/", "components/", 1)
-			if(!strings.HasSuffix(valid_path, ".kato")){
-				valid_path = valid_path+".kato"
-			}
-
-			file_bytes, err := os.ReadFile(valid_path)
-			if err != nil {
-				utils.Error("failed find component: "+valid_path)
-			}
-			
-			included_components[comp_name] = string(file_bytes)
-			return w.Write([]byte(""))
-
-		}else if(strings.HasPrefix(content, "render")){
-			// Skip rendering if not render tag as it needs to be rendered last
-			return w.Write([]byte("{{#render "+content+"}}"))
-		}else{
-			// Handle templating functions
-			utils.Print("TemplateFunctions: "+content)
-			handle_content := TemplateFunctions(content)
-			return w.Write([]byte(handle_content))
-		}
-	})
-
-
-	// Handle rendering components
-	render_func := fasttemplate.New(result, "{{#render", "}}")
-	result = render_func.ExecuteFuncString(func(w io.Writer, content string) (int, error) {
-		content = strings.Replace(content, "render <", "", 1)
-		content = strings.Trim(content, " ")
-		var comp_name, rest = utils.SplitAtRune(content, ' ')
-		if(rest == ""){
-			utils.Error("failed to render component: "+rest)
-			return w.Write([]byte(comp_name))
-		}
-
+		// if first character after # is a capital letter
+		// then it"s a component
+		if(token <= "A" || token >= "Z") {
+			current += ""
+			fmt.Println(text)		
+			// then it"s an internal operation e.i. #if, #for, etc..
+		}else if(token <= "a" || token >= "z") {
+			fmt.Println(text)
+		}			
+		// update the previous token
+		last_token = token
 		
-		hasChildren := strings.HasSuffix(strings.Trim(rest, " "), "</"+comp_name+">")
+	}
+	
 
-		utils.Print("-----------")
-		utils.Debug("name: "+comp_name + "   children? "+fmt.Sprint(hasChildren))
-		var remaining string
-		var children string
-		var props string
-		var attrs string
+	// for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+	// 	t := s.TokenText()
+	// 	//
+	// 	if(t == "<") { 
+	// 		arrow_tag = true 
+	// 		continue
+	// 	}else if(arrow_tag) { 
+	// 		arrow_tag = false 
+	// 		continue
+	// 	}
 
-		attrs, remaining = utils.SplitAt(rest, "props(")
-		if(remaining != ""){
-			// if passing props using json() syntax then split at the closing bracket
-			props, remaining = utils.SplitAt(remaining, ")")
-			
-		}else{
-			// if no props are passed then split at the closing bracket
-			if(hasChildren){
-				attrs, remaining = utils.SplitAt(rest, ">")
-			}else{
-				attrs, remaining = utils.SplitAt(rest, "/>")
-			}
-		}
+	// 	//
+	// 	if(arrow_tag && t == "#") {					
+	// 		cache += t
+	// 		continue
+	// 	}else if(arrow_tag && t != "#") {
+	// 		cache += t
+	// 		continue
+	// 	}
 
+	// 	// Is it a component or operation?
+	// 	if(cache == "#") {			
+	// 		// if first character after # is a capital letter
+	// 		// then it"s a component
+	// 		if(t <= "A" || t >= "Z") {
+	// 			fmt.Printf("%s: %s\n", s.Position, t)
 
-		if(hasChildren){
-			children, _ = utils.SplitAt(remaining, "</"+comp_name+">")
-			if(children[0] == '>'){
-				children = children[1:]
-			}
-		}else{
-			// do shit
-		}
+	// 		// then it"s an internal operation e.i. #if, #for, etc..
+	// 		}else {
+	// 			fmt.Printf("%s: %s\n", s.Position, t)
+	// 		}
+// 	}
 
-		utils.Debug("attrs: "+attrs)
-		utils.Debug("remaining: "+remaining)
-		utils.Debug("props: "+props)
-		utils.Debug("children: "+children)
-		utils.Print("-----------")
-
-		// var children string
-		// var _closing string
-		// if(hasChildren){
-		// 	children, _ = utils.SplitAt(rest, "<"+comp_name+"/>")
-		// }else{
-		// 	children, _ = utils.SplitAt(rest, "/>")
-		// }
-
-		return w.Write([]byte("{{COMPONENT "+comp_name+"}}"))
-	})
+	// 	continue			
+	// }
 
 	return result
 }
 
 func RenderComponent(component string, attributes string, children string, json gjson.Result) string {
 	// 
-	
-	return ""
+	return SlipEngine(component, json)
 }
+
+// Regex example
+	// Get start tag of operations & components in the template
+	// - `<#[A-z]((.|\n)*?)>\n` basically <#ABC ... >\n
+	// - we can tell if it"s a component if it has a capital letter after the # sign
+	// - otherwise it"s an operation then we can check if the last character is "/>"
+	// - to know if it"s a self-closing tag or not
+	// fmt.Println("template: ", template)
+	// temp_gex := regexp.MustCompile(`(?m)<#[A-z](.+?)>`) //regexp.Compile("p([a-z]+)ch")
+	// for i, match := range temp_gex.FindAllString(template, -1) {
+  //     fmt.Println(match, "found at index", i)
+  // }

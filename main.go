@@ -16,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"github.com/tidwall/gjson"
+
 )
 
 func main() {
@@ -81,13 +82,14 @@ func main() {
 		return c.JSON(preference_data)
 	})
 
-	app.Get("/slip", func(c *fiber.Ctx) error {
+	app.Get("/", func(c *fiber.Ctx) error {
 		// timer start to log processing time
 		start := time.Now()
 
 		pageBytes, err := os.ReadFile("./view/pages/+page.kato")
 		utils.Fatal(err)
 
+		engine.CustomTemplateEngine(string(pageBytes))
 		page := engine.SlipEngine(string(pageBytes), gjson.Parse(default_data))
 
 		fmt.Println("Processing time: ", time.Since(start))

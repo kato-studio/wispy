@@ -2,7 +2,10 @@ module kato-studio/katoengine
 
 go 1.22.4
 
+require github.com/valyala/fasttemplate v1.2.2
+
 require (
+	github.com/alecthomas/participle/v2 v2.1.1
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
@@ -29,7 +32,6 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
-	github.com/valyala/fasttemplate v1.2.2
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/sys v0.15.0 // indirect

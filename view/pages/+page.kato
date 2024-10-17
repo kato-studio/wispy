@@ -1,27 +1,24 @@
-#include (c/Parent as Parent)
-#include (c/Header as Header)
-#include (c/Footer as Footer)
+#include(c/Parent as Parent)
+#include(c/Header as Header)
+#include(c/Footer as Footer)
 
 <script>
   console.log('hello from page')
 </script>
 
-#render(
-  <Header foo="bar" props(links:{{.links}}) />
-)
+<#Parent(links:{{.links}}) class="hello-world-header" />
 
 <h1>Home page</h1>
+<#if(wecomeMessage)>
+  <h2>{{.welcomeMessage}}</h2>
+</#for>
 
-#render(
-  <Parent props(links:{{.links}}, company:{{.company}})>
-    <ul>
-      <li>Item 1</li>
-      <li>Item 2</li>
-      <li>Item 3</li>
-    </ul>
-  </Parent>
-)
+<#Parent(links:{{.links}}, company:{{.company}})>
+  <ul>
+    <#for(item in .links)>
+      <li>{{.item}}</li>
+    </#for>
+  </ul>
+</#Parent>
 
-#render(
-  <Footer foo="bar" />
-)
+<#Footer() foo="bar" />
