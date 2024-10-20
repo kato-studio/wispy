@@ -6,19 +6,19 @@
   console.log('hello from page')
 </script>
 
-<#Parent(links:{{.links}}) class="hello-world-header" />
+<#Parent links={{.links}} class:="hello-world-header" />
 
 <h1>Home page</h1>
-<#if(wecomeMessage)>
+<#if (wecomeMessage)>
   <h2>{{.welcomeMessage}}</h2>
 </#if>
 
-<#Parent(links:{{.links}}, company:{{.company}})>
+<#Parent link={{.links}} company={{.company}}>
   <ul>
-    <#for(item in .links)>
+    <#for item in {{.links}}>
       <li>{{.item}}</li>
     </#for>
   </ul>
 </#Parent>
 
-<#Footer() foo="bar" />
+<#Footer foo="bar" />

@@ -2,65 +2,143 @@ package engine
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/tidwall/gjson"
-
 )
 
-func FindEndTag(content string, tagName string) string {
-	// Regular expression to match custom elements
-	re := regexp.MustCompile(`</#[A-z]((.|\n)*?)>`)
-
-	// Process all matches
-	for {
-		match := re.FindStringSubmatch(content)
-		if match == nil { break }
-
-		element := match[0]
-
-		fmt.Println("Element:", element)
-		// fmt.Println("Attributes:", attrs)
-		// fmt.Println("Content:", content)
-
-		// Call the appropriate render function
-		content = strings.Replace(content, match[0], "", 1)
-		// If no render function is found, remove the custom element tags
-		// html = strings.Replace(html, match[0], content, 1)
-	}
-
-	return content 
-}
- 
+// SlipEngine is the main function that will render the template
 func SlipEngine(template string, json gjson.Result) string {
-		// Regular expression to match custom elements
-	re := regexp.MustCompile(`<#[A-z]((.|\n)*?)>`)
+	// 
+	var result = ""
+	print("Template:\n", template)
+	print("\n=======================================\n")
+	// 
+	// hoisted variables
+	tag_name := ""
+	tag_start := -1
+	tag_end_end := -1
 
-	// Process all matches
-	for {
-		match := re.FindStringSubmatch(template)
-		if match == nil { break }
+	// handle nested tags of the same type
+	nested_depth := 0
+	self_closing := false
+	// 
+	for i := 2; i < len(template); i++ {
+		// cache the previous characters		
+		prev_prev := template[i-2]
+		prev := template[i-1]
+		char := template[i]
 
-		element := match[0]
+		// preserve the start
+		if (prev_prev == '<' && prev == '#') {
+			// todo handle index not found
+			test_index := strings.Index(template[i:], " ")
+			test_name := template[i:i+test_index]
+			// 
+			// if not currently in a tag then start a new tag
+			if(tag_name == "") {
+				tag_name = test_name
+				tag_start = i
+				// 
+				// if currently in a tag then check if it's the same tag type
+				// if it is then increment the nested_depth
+			}else{
+				if(tag_name == test_name) {
+					nested_depth++
+				}
+				continue
+			}
+		}
 
-		fmt.Println("Element:", element)
-		// fmt.Println("Attributes:", attrs)
-		// fmt.Println("Content:", content)
+		// if currently in a tag then check if it's the end of the tag
+		if (len(tag_name) > 0) {
+			
+			// check if it's a self-closing tag
+			if(prev == '>') {
+				if(prev_prev == '/') {
+					self_closing = true
+					tag_end_end = i
+				}
+			}
+			// check if it's the end of the tag
+			if(prev_prev == '/' && prev == '#' && char == tag_name[0]) {
+				// 
+				name_length := len(tag_name)
+				// 
+				if(template[i:i+name_length] == tag_name) {
+					tag_end_end = i+name_length
+				}else{
+					fmt.Println("[Info]: Could not find the end tag: ", tag_name, " at index: ", i)
+					fmt.Println("[Error]: Could not find the end tag for the tag_name index: ", tag_name)
+					return "SAD :( \n\n\n\n" +
+					""+
+					fmt.Sprintf("| tag_name: %s \n",tag_name)  +
+					fmt.Sprintf("| %s \n", template[i-7:i+7])  +
+					"--------------"+
+					fmt.Sprintf("| %d\n", 0)  +
+					fmt.Sprintf("| %d\n", 0)  +
+					fmt.Sprintf("| %d\n", 0)
+				}
+			}
 
-		// Call the appropriate render function
-		template = strings.Replace(template, match[0], "", 1)
-		// If no render function is found, remove the custom element tags
-		// html = strings.Replace(html, match[0], content, 1)
-		template = FindEndTag(template, element)
-	}
+			// if tag_start and tag_end are found then render the tag
+			if(tag_end_end > 0 || self_closing) {
+				print("tag_end_end: ", tag_end_end, "\n")
+				// 
+				// get the content of the tag
+				tag_content := template[tag_start:tag_end_end]
+				// 
+				char_zero := tag_content[0]
 
-	return template
+				// check if the tag is an operation or a component
+				if(char_zero >= 'A' && char_zero <= 'Z') {
+					print("comp_tag_start_end: ", tag_end_end, "\n")
+					result += RenderComponent(tag_name, tag_content, self_closing, json)
+				}else{
+					result += RenderOperation(tag_name, tag_content, self_closing, json)
+				}
+				// 
+				print("[tag name reset] \n")
+
+				// reset the all the tag variables
+				tag_name = ""
+				tag_start = -1
+				// tag_start_end = -1
+				tag_end_end = -1
+				nested_depth = 0
+				self_closing = false
+				// 
+			}
+
+			if(i == 2) {result += string(template[:2])}
+			//
+			// if not currently in a tag then start a new tag
+			if(tag_name == "") {
+				// handle initial content if not the start of a tag
+				// push the character to the result
+				result += string(char)
+			}
+
+		} // end of tag_name check
+	} // end of for loop
+	return result
 }
 
-func RenderComponent(component string, attributes string, children string, json gjson.Result) string {
+// Handles the logic for rendering operations e.g. <#if>, <#for>
+func RenderOperation(name string, contents string, self_closing bool, json gjson.Result) string {
+	fmt.Println("Operation: ", name)
+	fmt.Println("Contents: \n", contents)
+	fmt.Println("--------------------")
+	return "##-OP-###"
+}
+
+// Handles the logic for rendering components e.g. <#Button>, <#Input>
+func RenderComponent(name string, contents string, self_closing bool, json gjson.Result) string {
 	// 
-	return SlipEngine(component, json)
+	fmt.Println("Component: ", name)
+	fmt.Println("Contents: \n", contents)
+	fmt.Println("--------------------")
+	return "##-COMP-###"
 }
 
 // Regex example
