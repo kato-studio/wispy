@@ -85,5 +85,6 @@ func FindComponentTagEnd(s string, start int) int {
 			}
 		}
 	}
+	
 	return -1 // Not found
 }

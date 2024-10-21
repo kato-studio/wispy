@@ -9,9 +9,13 @@
 <#Parent links={{.links}} class:="hello-world-header" />
 
 <h1>Home page</h1>
+
 <#if (wecomeMessage)>
   <h2>{{.welcomeMessage}}</h2>
 </#if>
+
+<p>Some content</p>
+<p>lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam, quos.</p>
 
 <#Parent link={{.links}} company={{.company}}>
   <ul>
@@ -20,5 +24,8 @@
     </#for>
   </ul>
 </#Parent>
+
+<div style="hight:200px; width:200px; background: red;"></div>
+
 
 <#Footer foo="bar" />
