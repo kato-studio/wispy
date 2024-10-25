@@ -16,7 +16,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"github.com/tidwall/gjson"
-
 )
 
 func main() {
@@ -52,15 +51,17 @@ func main() {
 	app := fiber.New()
 
 	// render pages based on folder structure in /pages
-	const pagesDir = "./view/pages"
-
 	var default_data = `{
 		"stars": ["STAR", "STAR-STAR", "STAR-STAR-STAR", "STAR-STAR-STAR-STAR", "STAR-STAR-STAR-STAR-STAR"],
 		"page": {
 			"title": "Home",
 			"url": "/page/url/home",
 		},
-		"links":["link1", "link2", "link3"],
+		"links": [
+			{"text": "Home", "url": "/"},
+			{"text": "About", "url": "/about"},
+			{"text": "Contact", "url": "/contact"},
+		],
 		"clients": ["client1", "client2", "client3"],
 		"data": {
 			"is_logged_in":"true",
@@ -71,7 +72,7 @@ func main() {
 		}
 	}`
 
-	var preference_data = map[string][]string{
+	var performance_data = map[string][]string{
 		"/kato": {},
 		"/html": {},
 		"/test": {},
@@ -79,21 +80,39 @@ func main() {
 	}
 
 	app.Get("pref", func(c *fiber.Ctx) error {
-		return c.JSON(preference_data)
+		return c.JSON(performance_data)
 	})
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		// timer start to log processing time
 		start := time.Now()
 
-		pageBytes, err := os.ReadFile("./view/pages/+page.kato")
+		pageBytes, err := os.ReadFile("./view/pages/+page.hstm")
 		utils.Fatal(err)
 
-		page := engine.SlipEngine(string(pageBytes), gjson.Parse(default_data))
+		var ctx = engine.RenderCTX{
+			Json:      gjson.Parse(default_data),
+			Snippet:   map[string]string{},
+			Variables: map[string]string{},
+		}
+
+		page := engine.SlipEngine(string(pageBytes), ctx)
 
 		fmt.Println("Processing time: ", time.Since(start))
-		preference_data["/slip"] = append(preference_data["/slip"], fmt.Sprint(time.Since(start)))
+		performance_data["/slip"] = append(performance_data["/slip"], fmt.Sprint(time.Since(start)))
 		return c.SendString(page)
+	})
+
+	app.Get("/plain", func(c *fiber.Ctx) error {
+		// timer start to log processing time
+		start := time.Now()
+		//
+		pageBytes, err := os.ReadFile("./view/pages/+page.hstm")
+		utils.Fatal(err)
+		//
+		fmt.Println("Processing time: ", time.Since(start))
+		performance_data["/plain"] = append(performance_data["/plain"], fmt.Sprint(time.Since(start)))
+		return c.SendString(string(pageBytes))
 	})
 
 	// this windows check is to prevent the server from failing to bind to the port on windows

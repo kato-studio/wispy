@@ -3,6 +3,6 @@
     <title>Layout</title>
   </head>
   <body>
-    #slot()
+    <_slot/>
   </body>
 </html>

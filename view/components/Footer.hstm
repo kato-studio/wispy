@@ -1,0 +1,9 @@
+<div>
+  <h2>Footer</h2>
+  <p>{{company.name}}</p>
+  <div>
+    <_render each="link" in={{links}}>
+      <a href="{{link.url}}">{{link.text}}</a>
+    </_render>
+  </div>
+<div>

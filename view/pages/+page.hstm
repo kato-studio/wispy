@@ -1,0 +1,31 @@
+<script imports>
+  import Parent from "components/Parent"
+  import Header from "components/Header"
+  import Footer from "components/Footer" 
+</script>
+<script>
+  console.log('hello from page')
+</script>
+
+<_Parent links={{links}} class="hello-world-header" />
+
+<h1>Home page</h1>
+
+<_render if={{page.title}}>
+  <h2>{{page.title}}</h2>
+</_render>
+
+<p>Some content</p>
+<p>lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam, quos.</p>
+
+<_Parent link={{links}} company={{company}}>
+  <ul>
+    <_render each="link" in={{links}}>
+      <li>{{link.url}}</li>
+    </_render>
+  </ul>
+</_Parent>
+
+<div style="height:200px; width:200px; background: red;"></div>
+
+<_Footer foo="bar" />
