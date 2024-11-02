@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,19 +14,35 @@ import (
 
 var attributes_regex = regexp.MustCompile(`([-\w:])+=({{(.*?)}}|\"(.*?)\")`)
 
-func RenderLayout(layout string, template string, ctx RenderCTX) string {
+func RenderPage(contents string, path string, ctx RenderCTX) string {
+	var result = contents
 	//
-	return SlipEngine(template, ctx)
-}
-
-func RenderPage(template string, ctx RenderCTX) string {
+	path_split := strings.Split(path, "/")
+	dirs_length := len(path_split) - 1
+	// safety check for the path
+	if dirs_length > 0 {
+		for i := dirs_length; i >= 0; i-- {
+			parent_layout_path := strings.Join(path_split[:i], "/") + LAYOUT_FILE
+			// check if the path part is a variable
+			if _, err := os.Stat(parent_layout_path); err == nil {
+				layout_bytes, err := os.ReadFile(parent_layout_path)
+				if err != nil {
+					fmt.Println("[Error]: Could not read the layout file: ", err)
+					continue
+				}
+				// layout found! replace the layout with the page
+				this_layout := string(layout_bytes)
+				result = strings.ReplaceAll(this_layout, "<_slot/>", result)
+				// error handling
+			} else if errors.Is(err, os.ErrNotExist) {
+				continue
+			} else {
+				fmt.Println("[Error]: Error while checking for layout: ", err)
+			}
+		}
+	}
 	//
-	return SlipEngine(template, ctx)
-}
-
-func RenderComponent(template string, ctx RenderCTX) string {
-	//
-	return SlipEngine(template, ctx)
+	return SlipEngine(result, ctx)
 }
 
 // -------------------------
@@ -67,15 +84,23 @@ func SlipEngine(template string, ctx RenderCTX) string {
 			raw_path := import_split[1]
 			// removing trailing ")" and clean path
 			alias := strings.Trim(raw_alias, " ")
-			comp_path := strings.Trim(strings.TrimSpace(raw_path), "\"")
-			absolute_view_path, err := filepath.Abs("./view")
 
+			// TODO: error handling
+			var component_folder = "./components"
+			var split = strings.Split(strings.Trim(strings.TrimSpace(raw_path), "\""), "/")
+			var site_name = split[0]
+			var comp_path = split[1:]
+			if site_name != "components" {
+				// if the site name is not components then it's a site component
+				component_folder = "./sites/" + site_name + "/components"
+			}
+			absolute_view_path, err := filepath.Abs(component_folder)
 			if err != nil {
 				fmt.Println("[Error]: Could not get the absolute path for the view folder")
 				continue
 			}
 			// read the file
-			read_path := absolute_view_path + "/" + comp_path + ".hstm"
+			read_path := absolute_view_path + "/" + strings.Join(comp_path, "/") + ".hstm"
 			file, err := os.ReadFile(read_path)
 			if err != nil {
 				fmt.Println("[Error]: Could not import file: ", read_path)
@@ -168,6 +193,9 @@ func SlipEngine(template string, ctx RenderCTX) string {
 		if tag_end_end > 0 || self_closing {
 			// get the content of the tag
 			tag_content := template[tag_start:tag_end_end]
+			if tag_name == "slot" || tag_name == "slot/>" {
+				continue
+			}
 			// check if the tag is an operation or a component
 			if tag_name == "render" || tag_name == "null_placeholder" {
 				result += HandleOperation(tag_name, tag_content, self_closing, ctx)
@@ -226,7 +254,7 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 	}
 	// handle edge case where the end tag is not found
 	if start_tag_end < 0 {
-		fmt.Println("[Error]: Could not find the end tag for the component: ", name)
+		fmt.Println("[Error]: Could not find the end tag for the operation: ", name)
 		return "\n[SAD :(]\n"
 	}
 	if !self_closing {
@@ -280,8 +308,11 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 				for _, item := range array {
 					// create a new context with the item
 					new_json, err := sjson.Set(ctx.Json.Raw, item_name, item.Value())
-					fmt.Println("new_json: ", new_json)
 					if err == nil {
+						/*
+							TODO: Don't include all context only the necessary context to component
+							todo: implement hoisted context1
+						*/
 						new_ctx := RenderCTX{
 							Json:      gjson.Parse(new_json),
 							Snippet:   ctx.Snippet,

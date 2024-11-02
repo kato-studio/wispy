@@ -1,0 +1,8 @@
+<html>
+  <head>
+    <title>inner test Layout</title>
+  </head>
+  <body>
+    <_slot/>
+  </body>
+</html>

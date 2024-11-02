@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-
 )
 
 var logger = log.New(os.Stderr)
@@ -60,7 +59,6 @@ var debugLogStyle = lipgloss.NewStyle().
 	Padding(0, 1, 0, 1).
 	Foreground(lipgloss.Color("20"))
 
-// example of title
 // ╭─────────────────────────────────────────────────╮
 // │ DEBUG Loading components from ./view/components │
 // ╰─────────────────────────────────────────────────╯
@@ -72,7 +70,7 @@ var TitleStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder())
 
 func Fatal(str any) {
-	if(str != nil) {
+	if str != nil {
 		logger.Fatal(str)
 	}
 }

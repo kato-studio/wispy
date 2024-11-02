@@ -24,7 +24,6 @@ func main() {
 	if envRrr != nil {
 		utils.Fatal("Error loading .env file")
 	}
-
 	// check if os is windows
 	windows := false
 	if runtime.GOOS == "windows" {
@@ -35,18 +34,16 @@ func main() {
 	} else {
 		utils.Info("Non-Windows OS detected")
 	}
-
+	//
 	if strings.ToLower(os.Getenv("DEBUG")) == "true" {
 		utils.Info("Debug mode enabled")
 	} else if strings.ToLower(os.Getenv("DEBUG")) == "false" && windows {
 		utils.Info("Debug mode was not set to false & windows has been detected")
 		utils.Info("Enabling debug mode....")
 	}
-
 	// ------------------------------
 	// Begin setup logic for server
 	// ------------------------------
-
 	// Default config
 	app := fiber.New()
 
@@ -54,7 +51,7 @@ func main() {
 	var default_data = `{
 		"stars": ["STAR", "STAR-STAR", "STAR-STAR-STAR", "STAR-STAR-STAR-STAR", "STAR-STAR-STAR-STAR-STAR"],
 		"page": {
-			"title": "Home",
+			// "title": "Home is where the heart is",
 			"url": "/page/url/home",
 		},
 		"links": [
@@ -71,23 +68,40 @@ func main() {
 			"address": "1234 Kato Lane",
 		}
 	}`
-
+	//
 	var performance_data = map[string][]string{
 		"/kato": {},
 		"/html": {},
 		"/test": {},
 		"/slip": {},
 	}
-
+	//
 	app.Get("pref", func(c *fiber.Ctx) error {
 		return c.JSON(performance_data)
+	})
+	//
+	app.Get("/render-all", func(c *fiber.Ctx) error {
+		start := time.Now()
+
+		var ctx = engine.RenderCTX{
+			Json:      gjson.Parse(default_data),
+			Snippet:   map[string]string{},
+			Variables: map[string]string{},
+		}
+
+		engine.RenderAllSites("./sites", ctx)
+
+		fmt.Println("Processing time: ", time.Since(start))
+		c.Set("Content-Type", "text/html")
+		return c.SendString(fmt.Sprint(time.Since(start)))
+
 	})
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		// timer start to log processing time
 		start := time.Now()
 
-		pageBytes, err := os.ReadFile("./view/pages/+page.hstm")
+		pageBytes, err := os.ReadFile("./sites/kato.studio/pages/+page.hstm")
 		utils.Fatal(err)
 
 		var ctx = engine.RenderCTX{
@@ -100,21 +114,41 @@ func main() {
 
 		fmt.Println("Processing time: ", time.Since(start))
 		performance_data["/slip"] = append(performance_data["/slip"], fmt.Sprint(time.Since(start)))
+		c.Set("Content-Type", "text/html")
 		return c.SendString(page)
 	})
+	//
+	app.Get("/raw", func(c *fiber.Ctx) error {
+		// timer start to log processing time
+		start := time.Now()
 
+		pageBytes, err := os.ReadFile("./sites/kato.studio/pages/+page.hstm")
+		utils.Fatal(err)
+
+		var ctx = engine.RenderCTX{
+			Json:      gjson.Parse(default_data),
+			Snippet:   map[string]string{},
+			Variables: map[string]string{},
+		}
+
+		page := engine.SlipEngine(string(pageBytes), ctx)
+
+		fmt.Println("Processing time: ", time.Since(start))
+		performance_data["/raw"] = append(performance_data["/raw"], fmt.Sprint(time.Since(start)))
+		return c.SendString(page)
+	})
+	//
 	app.Get("/plain", func(c *fiber.Ctx) error {
 		// timer start to log processing time
 		start := time.Now()
 		//
-		pageBytes, err := os.ReadFile("./view/pages/+page.hstm")
+		pageBytes, err := os.ReadFile("./sites/pages/+page.hstm")
 		utils.Fatal(err)
 		//
 		fmt.Println("Processing time: ", time.Since(start))
 		performance_data["/plain"] = append(performance_data["/plain"], fmt.Sprint(time.Since(start)))
 		return c.SendString(string(pageBytes))
 	})
-
 	// this windows check is to prevent the server from failing to bind to the port on windows
 	if windows {
 		log.Fatal(app.Listen("localhost:3000"))
