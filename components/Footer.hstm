@@ -1,0 +1,9 @@
+<div class="flex">
+  <h2>HI! I'm a global footer!</h2>
+  <_render if={{foo}}>
+    <p>{{foo}}</p>
+  </_render>
+  <hr/>
+  </div>
+  <_slot />
+</div>

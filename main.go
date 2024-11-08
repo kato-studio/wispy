@@ -84,70 +84,36 @@ func main() {
 		start := time.Now()
 
 		var ctx = engine.RenderCTX{
-			Json:      gjson.Parse(default_data),
-			Snippet:   map[string]string{},
-			Variables: map[string]string{},
+			Json:       gjson.Parse(default_data),
+			Components: map[string]string{},
+			Head:       map[string]string{},
+			Variables:  map[string]string{},
 		}
 
 		engine.RenderAllSites("./sites", ctx)
 
 		fmt.Println("Processing time: ", time.Since(start))
 		c.Set("Content-Type", "text/html")
-		return c.SendString(fmt.Sprint(time.Since(start)))
-
+		pageBytes, _ := os.ReadFile("./.build/static/kato.studio/pages/index.html")
+		return c.Send(pageBytes)
 	})
-
-	app.Get("/", func(c *fiber.Ctx) error {
+	app.Get("/kato/*", func(c *fiber.Ctx) error {
 		// timer start to log processing time
 		start := time.Now()
-
-		pageBytes, err := os.ReadFile("./sites/kato.studio/pages/+page.hstm")
-		utils.Fatal(err)
-
+		//
 		var ctx = engine.RenderCTX{
-			Json:      gjson.Parse(default_data),
-			Snippet:   map[string]string{},
-			Variables: map[string]string{},
+			Json:       gjson.Parse(default_data),
+			Components: map[string]string{},
+			Head:       map[string]string{},
+			Variables:  map[string]string{},
 		}
-
-		page := engine.SlipEngine(string(pageBytes), ctx)
-
+		//
+		forwarded_path := strings.Replace(c.Path(), "/kato", "", 1)
+		page := engine.RenderPage("/kato.studio"+forwarded_path, ctx)
+		//
 		fmt.Println("Processing time: ", time.Since(start))
-		performance_data["/slip"] = append(performance_data["/slip"], fmt.Sprint(time.Since(start)))
 		c.Set("Content-Type", "text/html")
 		return c.SendString(page)
-	})
-	//
-	app.Get("/raw", func(c *fiber.Ctx) error {
-		// timer start to log processing time
-		start := time.Now()
-
-		pageBytes, err := os.ReadFile("./sites/kato.studio/pages/+page.hstm")
-		utils.Fatal(err)
-
-		var ctx = engine.RenderCTX{
-			Json:      gjson.Parse(default_data),
-			Snippet:   map[string]string{},
-			Variables: map[string]string{},
-		}
-
-		page := engine.SlipEngine(string(pageBytes), ctx)
-
-		fmt.Println("Processing time: ", time.Since(start))
-		performance_data["/raw"] = append(performance_data["/raw"], fmt.Sprint(time.Since(start)))
-		return c.SendString(page)
-	})
-	//
-	app.Get("/plain", func(c *fiber.Ctx) error {
-		// timer start to log processing time
-		start := time.Now()
-		//
-		pageBytes, err := os.ReadFile("./sites/pages/+page.hstm")
-		utils.Fatal(err)
-		//
-		fmt.Println("Processing time: ", time.Since(start))
-		performance_data["/plain"] = append(performance_data["/plain"], fmt.Sprint(time.Since(start)))
-		return c.SendString(string(pageBytes))
 	})
 	// this windows check is to prevent the server from failing to bind to the port on windows
 	if windows {

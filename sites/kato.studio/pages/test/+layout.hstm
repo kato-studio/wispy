@@ -1,8 +1,5 @@
-<html>
-  <head>
-    <title>inner test Layout</title>
-  </head>
-  <body>
-    <_slot/>
-  </body>
-</html>
+<small>
+  root body (/test/* layout)
+</small>
+<br>
+<_slot/>

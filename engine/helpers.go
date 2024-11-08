@@ -2,15 +2,34 @@ package engine
 
 import (
 	"fmt"
-	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
 )
 
-var regex_number = regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+$`)
-var regex_insert = regexp.MustCompile(`{{.*?}}`)
+// By default, the engine will remove all comments from the template
+// todo: add specific comments "option" tag to preserve comments for on render
+func RemoveComments(contents string) string {
+	// Remove comments
+	contents = strings.ReplaceAll(contents, "<!--", "<!---")
+	contents = strings.ReplaceAll(contents, "-->", "--->")
+	contents = regexp.MustCompile(`<!---.*?--->`).ReplaceAllString(contents, "")
+	return contents
+}
+
+// Clean the template by removing comments, newlines, and extra spaces
+func CleanTemplate(contents string) string {
+	// Remove comments
+	contents = RemoveComments(contents)
+	// Remove newlines
+	contents = strings.ReplaceAll(contents, "\n", "")
+	contents = strings.ReplaceAll(contents, "\r", "")
+	// Remove extra spaces
+	contents = regexp.MustCompile(`\s+`).ReplaceAllString(contents, " ")
+	return contents
+}
 
 // Return strings
 // [String, Number, True, False, Null, JSON, ARRAY]
@@ -18,7 +37,7 @@ func ValueOrTrimmed(raw_value string, json gjson.Result) (result string, value_t
 	var value = strings.TrimSpace(strings.Trim(raw_value, "\""))
 
 	// Check if the value is a JSON path
-	if strings.Contains(value[:4], "{{") {
+	if strings.Contains(value, "{{") {
 		json_path := strings.TrimSpace(strings.Trim(value, "{}"))
 		found_value := json.Get(json_path)
 		if found_value.Exists() {
@@ -56,6 +75,9 @@ func ValueOrTrimmed(raw_value string, json gjson.Result) (result string, value_t
 	return value, "String", ""
 }
 
+// Insert values into the template from json data
+// Similar to Go's text/template package (benchmarks would be interesting)
+// this is a simple implementation and can be optimized (so is the entire engine :P )
 func InsertValues(contents string, json gjson.Result) string {
 	matches := regex_insert.FindAllString(contents, -1)
 	for _, match := range matches {
@@ -70,67 +92,19 @@ func InsertValues(contents string, json gjson.Result) string {
 	return contents
 }
 
-// -----===================-----
-func fileClosure(dir_path string, contents string, ctx RenderCTX) error {
-	renderedContents := RenderPage(contents, dir_path, ctx)
-	//
-	if renderedContents == "" {
-		fmt.Println("[warn]: Could not render the page: ", dir_path)
-		return nil
-	}
-	output_dir := strings.Replace(dir_path, "./sites", "./static_sites", 1)
-	output_dir = strings.Replace(output_dir, "+page.hstm", "", 1)
-	//
-	output_path := strings.Replace(dir_path, "./sites", "./static_sites", 1)
-	output_path = strings.Replace(output_path, "+page.hstm", "index.html", 1)
-	//
-	dir_err := os.MkdirAll(output_dir, 0755)
-	err := os.WriteFile(output_path, []byte(renderedContents), 0644)
-	if err != nil {
-		fmt.Println("[Error]: Could not write the file: ", output_path)
-		if dir_err != nil {
-			fmt.Println("[Error]: Could not create the directory: ", output_dir)
+// validate domain name (for client sites directory)
+func ValidateDomainName(domain string) bool {
+	if strings.Contains(domain, ".") {
+		split_domain := strings.Split(domain, ".")
+		domain_name := split_domain[len(split_domain)-1]
+		//
+		if slices.Contains(DOMAINS[:], domain_name) {
+			return true
 		} else {
-			fmt.Println("[Error]: Could not write the file: ", output_path)
-		}
-		fmt.Println("----------")
-		return err
-	}
-	return nil
-}
-
-func dirClosure(dir_path string, ctx RenderCTX) error {
-	folder_items, err := os.ReadDir(dir_path)
-	if err != nil {
-		fmt.Println("[Error]: Could not read the directory: ", dir_path)
-		return err
-	}
-	for _, item := range folder_items {
-		this_path := dir_path + "/" + item.Name()
-		if item.IsDir() {
-			dirClosure(this_path, ctx)
-		} else {
-			if item.Name() != "+page.hstm" {
-				continue
-			}
-			contentBytes, err := os.ReadFile(this_path)
-			if err != nil {
-				fmt.Println("[Error]: Could not read the file: ", this_path)
-				return err
-			}
-			fileClosure(this_path, string(contentBytes), ctx)
+			fmt.Println("[Error]: Invalid domain name: ", domain_name)
+			return false
 		}
 	}
-	return nil
-}
-func RenderAllSites(sitesDir string, ctx RenderCTX) error {
-	files, err := os.ReadDir(sitesDir)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		dirClosure(sitesDir+"/"+file.Name()+"/pages", ctx)
-	}
-
-	return nil
+	fmt.Println("[Error]: Invalid domain: ", domain)
+	return false
 }

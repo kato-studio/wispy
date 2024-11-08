@@ -5,24 +5,58 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
+
+	//
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )
 
-var attributes_regex = regexp.MustCompile(`([-\w:])+=({{(.*?)}}|\"(.*?)\")`)
+// RenderPage handles not only the rendering of the page but also the layout
+// and checking for parent layouts that may also need to be rendered
+func RenderPage(raw_path string, ctx RenderCTX) string {
+	var result = ""
+	var path_split = strings.Split(raw_path, "/")
+	var site_domain = path_split[1]
+	path_split = path_split[2:]
+	// validate name regex (validate the site name is a domain)
+	is_valid_domain := ValidateDomainName(site_domain)
+	if !is_valid_domain {
+		fmt.Println("[Error]: The site name is not a valid domain: ", site_domain)
+		// Todo: return a 404 page or something (maybe a dev mode and prod mode response)
+		return ""
+	}
+	var base_path = ROOT_DIR + "/" + site_domain + "/pages/"
+	dirs_length := len(path_split)
 
-func RenderPage(contents string, path string, ctx RenderCTX) string {
-	var result = contents
-	//
-	path_split := strings.Split(path, "/")
-	dirs_length := len(path_split) - 1
+	var page_path = base_path + strings.Join(path_split, "/") + PAGE_FILE
+	if _, err := os.Stat(page_path); err == nil {
+		page_bytes, err := os.ReadFile(page_path)
+		if err != nil {
+			fmt.Println("[Error]: Could not read the page file: ", err)
+			return ""
+		}
+		result = CleanTemplate(string(page_bytes))
+	} else if errors.Is(err, os.ErrNotExist) {
+		fmt.Println("[Error]: Could not find the page file: ", page_path)
+		return ""
+	} else {
+		fmt.Println("[Error]: Error while checking for page: ", err)
+		return ""
+	}
+
 	// safety check for the path
 	if dirs_length > 0 {
-		for i := dirs_length; i >= 0; i-- {
-			parent_layout_path := strings.Join(path_split[:i], "/") + LAYOUT_FILE
+		// "i >= 1" because the "path_split" will always contain and empty string at the start
+		// this is because the path starts with a "/" and the split function will always add an empty string
+		// this is fine as we need the extra slash on the join anyways
+		for i := dirs_length; i >= 1; i-- {
+			if path_split[i-1] == "" {
+				break
+			}
+			// if empty path artifact then skip
+			parent_layout_path := base_path + strings.Join(path_split[:i], "/") + LAYOUT_FILE
 			// check if the path part is a variable
 			if _, err := os.Stat(parent_layout_path); err == nil {
 				layout_bytes, err := os.ReadFile(parent_layout_path)
@@ -31,39 +65,59 @@ func RenderPage(contents string, path string, ctx RenderCTX) string {
 					continue
 				}
 				// layout found! replace the layout with the page
+				fmt.Println("[Info]: Found the layout file: ", parent_layout_path)
 				this_layout := string(layout_bytes)
 				result = strings.ReplaceAll(this_layout, "<_slot/>", result)
 				// error handling
 			} else if errors.Is(err, os.ErrNotExist) {
+				fmt.Println("[Info]: Could not find the layout file: ", parent_layout_path)
 				continue
 			} else {
 				fmt.Println("[Error]: Error while checking for layout: ", err)
 			}
 		}
 	}
+	// Insert contents to site root document & resolve head tags
+	// -----
+	root_document_path := base_path + DOCUMENT_FILE
+	root_document, err := os.ReadFile(root_document_path)
+	if err != nil {
+		fmt.Println("[Error]: Could not read the root document: ", err)
+	}
 	//
+	clean_doc := CleanTemplate(string(root_document))
+	result = strings.ReplaceAll(clean_doc, "{{BODY_CONTENT}}", result)
+	// Todo: Resolve head tags
+	result = strings.ReplaceAll(result, "{{HEAD_CONTENT}}", "")
 	return SlipEngine(result, ctx)
 }
 
 // -------------------------
 // SlipEngine is the main function that will render the template
 // -------------------------
+// this is a simple implementation and can be optimized
 func SlipEngine(template string, ctx RenderCTX) string {
-	var components = make(map[string]string)
-	parse_start_index := 2
+	// clean the template
+	template = CleanTemplate(template)
+
+	// core imports logic
+	var components = ctx.Components
 	//
 	imports_start_tag := "<script imports>"
 	imports_end_tag := "</script>"
+	//
 	imports_start_index := strings.Index(template, imports_start_tag)
+	imports_end_index := -1
+	//
 	if imports_start_index > -1 {
-		imports_end_index := strings.Index(template, imports_end_tag)
+		imports_end_index = strings.Index(template, imports_end_tag)
 		// handle edge case where the end tag is not found
 		if imports_end_index < 0 {
 			fmt.Println("[Error]: Could not find the end tag for the imports")
 			return ""
 		}
+		// ensure imports onl includes contents within imports
 		imports := template[imports_start_index+len(imports_start_tag) : imports_end_index]
-		parse_start_index = imports_end_index + len(imports_end_tag)
 		//
 		imports_split := strings.Split(imports, " import ")
 		for import_index, import_ := range imports_split {
@@ -85,7 +139,7 @@ func SlipEngine(template string, ctx RenderCTX) string {
 			// removing trailing ")" and clean path
 			alias := strings.Trim(raw_alias, " ")
 
-			// TODO: error handling
+			// TODO: better error handling
 			var component_folder = "./components"
 			var split = strings.Split(strings.Trim(strings.TrimSpace(raw_path), "\""), "/")
 			var site_name = split[0]
@@ -107,10 +161,24 @@ func SlipEngine(template string, ctx RenderCTX) string {
 				continue
 			}
 			// add the alias to the components map
-			components[alias] = string(file)
+			components[alias] = CleanTemplate(string(file))
 		}
+
+		// update the context with imported components
+		ctx.Components = components
+		// remove the imports from the template (account for end tag length)
+		// template = template[imports_start_index : imports_end_index+len(imports_end_tag)]
+		template = template[:imports_start_index] + template[imports_end_index+len(imports_end_tag):]
+
 	}
-	// find all imports with the regex pattern
+
+	// ----
+	// End of core imports logic
+	// ----
+	//
+	// ----
+	// Core rendering logic
+	// ----
 	var result = ""
 	// hoisted variables
 	tag_name := ""
@@ -119,15 +187,20 @@ func SlipEngine(template string, ctx RenderCTX) string {
 	// handle nested tags of the same type
 	nested_depth := 0
 	self_closing := false
-	//
-	for i := parse_start_index; i < len(template); i++ {
+	// loop starts at to prevent out of bounds error
+	// when checking for the previous character
+	for i := 2; i < len(template); i++ {
 		// cache the previous characters
 		prev := template[i-1]
 		char := template[i]
 		//
 		// preserve the start
 		if prev == '<' && char == '_' {
-			// todo handle index not found
+			// Todo: handle index not found (AKA better error handling! PS: maybe a prod & dev response modes)
+			// EXAMPLE: panic: runtime error: slice bounds out of range [18:17]
+			// I had used self closing end tag rather then a proper end tag
+			// should should provide a better error message
+			//
 			test_index := strings.Index(template[i+1:], " ")
 			test_name := template[i+1 : i+test_index+1]
 			//
@@ -135,11 +208,9 @@ func SlipEngine(template string, ctx RenderCTX) string {
 			if tag_name == "" {
 				tag_name = test_name
 				tag_start = i - 1
-				// remove the last character from the result
-				// since it's the start of a new tag
+				// remove the last character from the result since it's the start of a new tag
 				result = result[:len(result)-1]
-				// if currently in a tag then check if it's the same tag type
-				// if it is then increment the nested_depth
+				// if currently in a tag then check if it's the same tag type if it is then increment the nested_depth
 			} else {
 				if tag_name == test_name {
 					nested_depth++
@@ -169,7 +240,6 @@ func SlipEngine(template string, ctx RenderCTX) string {
 				tag_end_end = i + 1
 			}
 		}
-
 		// check if it's the end of the tag
 		if prev == '/' && char == '_' {
 			name_length := len(tag_name)
@@ -230,13 +300,14 @@ func SlipEngine(template string, ctx RenderCTX) string {
 				fmt.Sprintf("| %d\n", 0)
 		}
 	} // end of for loop
-
+	//
 	return InsertValues(result, ctx.Json)
 }
 
 // -------------------------
 // Handles the logic for rendering operations e.g. <_if>, <_for>
 // -------------------------
+// this is a simple implementation and can be optimized
 func HandleOperation(name string, contents string, self_closing bool, ctx RenderCTX) string {
 	var result = ""
 	var inner_content = ""
@@ -264,8 +335,8 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 		// -2 is to remove "/>" from self-closing tags
 		inner_content = contents[start_tag_end+1 : len(contents)-2]
 	}
-
-	attributes := attributes_regex.FindAllString(contents[:start_tag_end], -1)
+	//
+	attributes := regex_attributes.FindAllString(contents[:start_tag_end], -1)
 	// child_attributes := []string{}
 	for i, operation := range attributes {
 		// regex should guarantee that the split will have 2 elements
@@ -274,8 +345,8 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 		// _ is the value of the attribute
 		// current operation do not require the value
 		_, value_type, value_path := ValueOrTrimmed(raw_split[1], ctx.Json)
-
-		// If
+		//
+		// HANDLE: If
 		if attr_name == "if" {
 			// get the value of the attribute
 			// check if the value is a boolean
@@ -287,8 +358,8 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 			}
 			continue
 		} // ----------
-
-		// Each + In
+		//
+		// HANDLE: Each + In
 		if attr_name == "each" {
 			continue
 		}
@@ -297,7 +368,7 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 			each_value_name := strings.Split(attributes[i-1], "=")
 			raw_name, _, _ := ValueOrTrimmed(each_value_name[1], ctx.Json)
 			item_name := strings.Trim(raw_name, "\"")
-
+			//
 			// get the value of the attribute
 			// _, value_type, value_path := ValueOrTrimmed(attr_value, ctx.Json)
 			// fmt.Println("Value Path: ", value_path)
@@ -307,16 +378,17 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 				array := ctx.Json.Get(value_path).Array()
 				for _, item := range array {
 					// create a new context with the item
-					new_json, err := sjson.Set(ctx.Json.Raw, item_name, item.Value())
+					new_json, err := sjson.Set("{}", item_name, item.Value())
 					if err == nil {
 						/*
 							TODO: Don't include all context only the necessary context to component
-							todo: implement hoisted context1
+							TODO: implement hoisted context
 						*/
 						new_ctx := RenderCTX{
-							Json:      gjson.Parse(new_json),
-							Snippet:   ctx.Snippet,
-							Variables: ctx.Variables,
+							Json:       gjson.Parse(new_json),
+							Components: ctx.Components,
+							Head:       ctx.Head,
+							Variables:  ctx.Variables,
 						}
 						// render the inner content
 						result += SlipEngine(inner_content, new_ctx)
@@ -335,9 +407,11 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 
 		fmt.Println("[error]: Could not find the operation:" + attr_name)
 	} // ----------
-
 	// ----
-	// result += SlipEngine(inner_content, json)
+	// HANDLE: (Other operations)
+	// ----
+	// TODO: implement other operations
+	// ----
 	return result
 }
 
@@ -370,14 +444,45 @@ func HandleComponent(name string, contents string, self_closing bool, ctx Render
 	}
 	// check if the component is in the components map
 	component, ok := components[name]
-	// TODO: better handling for if <_slot/> has a space before closing E.g. <_slot />
-	component = strings.ReplaceAll(component, "<_slot/>", inner_content)
-	component = strings.ReplaceAll(component, "<_slot />", inner_content)
 	if !ok {
 		fmt.Println("[Error]: Could not find the component: ", name)
 		return "\n[SAD :(]\n"
 	}
-	// render the component
-	result += SlipEngine(component, ctx)
+
+	// ----
+	// Basic handling for passing child content
+	// TODO: better handling for if <_slot/> has a space before closing E.g. <_slot />
+	component = strings.ReplaceAll(component, "<_slot/>", inner_content)
+	component = strings.ReplaceAll(component, "<_slot />", inner_content)
+
+	// ----
+	// Handle passing props/data to the component
+	var attributes = regex_attributes.FindAllString(contents[:start_tag_end], -1)
+	new_json, err := sjson.Set("{}", "attributes", "")
+
+	for _, item := range attributes {
+		each_value_name := strings.Split(item, "=")
+		name := each_value_name[0] // shouldn't be needed... strings.TrimSpace()
+		parsed_value, _, _ := ValueOrTrimmed(each_value_name[1], ctx.Json)
+		//
+		new_json, err = sjson.Set(new_json, name, parsed_value)
+		if err != nil {
+			fmt.Println("[Error]: Could not pass the item to the new context: ", name)
+		}
+	}
+	if err != nil {
+		fmt.Println("[Error]: Could not set all props for the component: ", name)
+	}
+	// create a new context with passed props
+	new_ctx := RenderCTX{
+		Json:       gjson.Parse(new_json),
+		Components: ctx.Components,
+		Head:       ctx.Head,
+		Variables:  ctx.Variables,
+	}
+
+	// ----
+	// Render with the new context
+	result += SlipEngine(component, new_ctx)
 	return result
 }
