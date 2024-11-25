@@ -5,9 +5,9 @@ package main
 
 import (
 	"fmt"
-	"kato-studio/katoengine/engine"
-	"kato-studio/katoengine/utils"
-	"log"
+	"kato-studio/go-wispy/engine"
+	"kato-studio/go-wispy/engine/style"
+	"kato-studio/go-wispy/utils"
 	"os"
 	"runtime"
 	"strings"
@@ -18,11 +18,13 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+var log utils.Logger = utils.GetLogger()
+
 func main() {
 	// Load .env file
 	envRrr := godotenv.Load("./.env")
 	if envRrr != nil {
-		utils.Fatal("Error loading .env file")
+		log.Fatal("Error loading .env file")
 	}
 	// check if os is windows
 	windows := false
@@ -30,16 +32,16 @@ func main() {
 		windows = true
 	}
 	if windows {
-		utils.Info("Windows OS detected")
+		log.Info("Windows OS detected")
 	} else {
-		utils.Info("Non-Windows OS detected")
+		log.Info("Non-Windows OS detected")
 	}
 	//
 	if strings.ToLower(os.Getenv("DEBUG")) == "true" {
-		utils.Info("Debug mode enabled")
+		log.Info("Debug mode enabled")
 	} else if strings.ToLower(os.Getenv("DEBUG")) == "false" && windows {
-		utils.Info("Debug mode was not set to false & windows has been detected")
-		utils.Info("Enabling debug mode....")
+		log.Info("Debug mode was not set to false & windows has been detected")
+		log.Info("Enabling debug mode....")
 	}
 	// ------------------------------
 	// Begin setup logic for server
@@ -97,6 +99,10 @@ func main() {
 		pageBytes, _ := os.ReadFile("./.build/static/kato.studio/pages/index.html")
 		return c.Send(pageBytes)
 	})
+	app.Get("/style", func(c *fiber.Ctx) error {
+		cssStyles := style.DoThing()
+		return c.JSON(cssStyles)
+	})
 	app.Get("/kato/*", func(c *fiber.Ctx) error {
 		// timer start to log processing time
 		start := time.Now()
@@ -118,9 +124,9 @@ func main() {
 	// this windows check is to prevent the server from failing to bind to the port on windows
 	if windows {
 		log.Fatal(app.Listen("localhost:3000"))
-		utils.ServerPrint("Server started on 🚀 http://localhost:3000")
+		log.ServerPrint("Server started on 🚀 http://localhost:3000")
 	} else {
 		log.Fatal(app.Listen(":3000"))
-		utils.ServerPrint("Server started on 🚀 http://0.0.0.0:3000")
+		log.ServerPrint("Server started on 🚀 http://0.0.0.0:3000")
 	}
 }

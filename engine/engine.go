@@ -380,10 +380,8 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 					// create a new context with the item
 					new_json, err := sjson.Set("{}", item_name, item.Value())
 					if err == nil {
-						/*
-							TODO: Don't include all context only the necessary context to component
-							TODO: implement hoisted context
-						*/
+						// TODO: Don't include all context only the necessary context to component
+						// TODO: implement hoisted context
 						new_ctx := RenderCTX{
 							Json:       gjson.Parse(new_json),
 							Components: ctx.Components,
@@ -410,7 +408,7 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 	// ----
 	// HANDLE: (Other operations)
 	// ----
-	// TODO: implement other operations
+	// tbd (to be done)
 	// ----
 	return result
 }
