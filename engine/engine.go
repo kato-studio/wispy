@@ -13,10 +13,25 @@ import (
 	"github.com/tidwall/sjson"
 )
 
+func CompilePage(site_folder, page_html, page_css string) string {
+	root_document_path := site_folder + DOCUMENT_FILE
+	root_document, err := os.ReadFile(root_document_path)
+	if err != nil {
+		fmt.Println("[Error]: Could not read the root document: ", err)
+	}
+	//
+	clean_doc := CleanTemplate(string(root_document))
+	page_html = strings.ReplaceAll(clean_doc, "{{BODY_CONTENT}}", page_html)
+	// Todo: Resolve head tags
+	var head_content = "" + "\n<style>" + page_css + "\n</style>" + "\n"
+	page_html = strings.ReplaceAll(page_html, "{{HEAD_CONTENT}}", head_content)
+	//
+	return page_html
+}
+
 // RenderPage handles not only the rendering of the page but also the layout
 // and checking for parent layouts that may also need to be rendered
-func RenderPage(raw_path string, ctx RenderCTX) string {
-	var result = ""
+func RenderPage(raw_path string, ctx RenderCTX) (base_path, result string) {
 	var path_split = strings.Split(raw_path, "/")
 	var site_domain = path_split[1]
 	path_split = path_split[2:]
@@ -25,9 +40,9 @@ func RenderPage(raw_path string, ctx RenderCTX) string {
 	if !is_valid_domain {
 		fmt.Println("[Error]: The site name is not a valid domain: ", site_domain)
 		// Todo: return a 404 page or something (maybe a dev mode and prod mode response)
-		return ""
+		return base_path, ""
 	}
-	var base_path = ROOT_DIR + "/" + site_domain + "/pages/"
+	base_path = ROOT_DIR + "/" + site_domain + "/pages/"
 	dirs_length := len(path_split)
 
 	var page_path = base_path + strings.Join(path_split, "/") + PAGE_FILE
@@ -35,15 +50,15 @@ func RenderPage(raw_path string, ctx RenderCTX) string {
 		page_bytes, err := os.ReadFile(page_path)
 		if err != nil {
 			fmt.Println("[Error]: Could not read the page file: ", err)
-			return ""
+			return base_path, ""
 		}
 		result = CleanTemplate(string(page_bytes))
 	} else if errors.Is(err, os.ErrNotExist) {
 		fmt.Println("[Error]: Could not find the page file: ", page_path)
-		return ""
+		return base_path, ""
 	} else {
 		fmt.Println("[Error]: Error while checking for page: ", err)
-		return ""
+		return base_path, ""
 	}
 
 	// safety check for the path
@@ -77,19 +92,9 @@ func RenderPage(raw_path string, ctx RenderCTX) string {
 			}
 		}
 	}
-	// Insert contents to site root document & resolve head tags
+	// TODO: Resolve head tags
 	// -----
-	root_document_path := base_path + DOCUMENT_FILE
-	root_document, err := os.ReadFile(root_document_path)
-	if err != nil {
-		fmt.Println("[Error]: Could not read the root document: ", err)
-	}
-	//
-	clean_doc := CleanTemplate(string(root_document))
-	result = strings.ReplaceAll(clean_doc, "{{BODY_CONTENT}}", result)
-	// Todo: Resolve head tags
-	result = strings.ReplaceAll(result, "{{HEAD_CONTENT}}", "")
-	return SlipEngine(result, ctx)
+	return base_path, SlipEngine(result, ctx)
 }
 
 // -------------------------

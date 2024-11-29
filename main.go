@@ -103,6 +103,28 @@ func main() {
 		cssStyles := style.DoThing()
 		return c.JSON(cssStyles)
 	})
+
+	app.Get("/kato/test", func(c *fiber.Ctx) error {
+		// timer start to log processing time
+		start := time.Now()
+		//
+		var ctx = engine.RenderCTX{
+			Json:       gjson.Parse(default_data),
+			Components: map[string]string{},
+			Head:       map[string]string{},
+			Variables:  map[string]string{},
+		}
+		//
+		site_folder, page := engine.RenderPage("/kato.studio/test", ctx)
+		classes := style.ExtractClasses(page)
+		styles_obj := style.WispyStyleGenerate(classes, style.WispyStaticStyles, style.WispyColors)
+		compiled_css := style.WispyStyleCompile(styles_obj)
+		//
+		fmt.Println("Processing time: ", time.Since(start))
+		c.Set("Content-Type", "text/html")
+		return c.SendString(engine.CompilePage(site_folder, page, compiled_css))
+	})
+
 	app.Get("/kato/*", func(c *fiber.Ctx) error {
 		// timer start to log processing time
 		start := time.Now()
@@ -115,11 +137,11 @@ func main() {
 		}
 		//
 		forwarded_path := strings.Replace(c.Path(), "/kato", "", 1)
-		page := engine.RenderPage("/kato.studio"+forwarded_path, ctx)
+		site_folder, page := engine.RenderPage("/kato.studio"+forwarded_path, ctx)
 		//
 		fmt.Println("Processing time: ", time.Since(start))
 		c.Set("Content-Type", "text/html")
-		return c.SendString(page)
+		return c.SendString(engine.CompilePage(site_folder, page, ""))
 	})
 	// this windows check is to prevent the server from failing to bind to the port on windows
 	if windows {

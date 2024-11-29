@@ -2,18 +2,25 @@ package engine
 
 import (
 	"fmt"
+	"kato-studio/go-wispy/engine/style"
 	"os"
 	"strings"
 )
 
 // -----===================-----
 func fileClosure(dir_path string, ctx RenderCTX) error {
-	renderedContents := RenderPage(dir_path, ctx)
+	site_folder, page_contents := RenderPage(dir_path, ctx)
 	//
-	if renderedContents == "" {
+	if page_contents == "" {
 		fmt.Println("[warn]: Could not render the page: ", dir_path)
 		return nil
 	}
+	// Handle Css/Wispy-Engine
+	classes := style.ExtractClasses(page_contents)
+	styles_obj := style.WispyStyleGenerate(classes, style.WispyStaticStyles, style.WispyColors)
+	compiled_css := style.WispyStyleCompile(styles_obj)
+	renderedContents := CompilePage(site_folder, page_contents, compiled_css)
+	//
 	output_dir := strings.Replace(dir_path, "./sites", "./.build/static", 1)
 	output_dir = strings.Replace(output_dir, "+page.hstm", "", 1)
 	//

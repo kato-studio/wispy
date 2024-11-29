@@ -1,6 +1,6 @@
 package style
 
-var staticStyles = map[string]string{
+var WispyStaticStyles = map[string]string{
 	//////////////////////////
 	// GRID
 	//////////////////////////
@@ -101,9 +101,8 @@ var staticStyles = map[string]string{
 	"size-svw":    "width: 100svw; height: 100svh;",
 	"size-lvw":    "width: 100lvw; height: 100lvh;",
 	"size-dvw":    "width: 100dvw; height: 100dvh;",
-
 	//////////////////////////
-	// OTHER
+	// Boarder
 	//////////////////////////
 	"border-solid":  "border-style: solid;",
 	"border-dashed": "border-style: dashed;",
@@ -116,6 +115,22 @@ var staticStyles = map[string]string{
 	//////////////////////////
 	"sr-only": "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;",
 	"not-sr":  "position: static; width: auto; height: auto; padding: 0; margin: 0; overflow: visible; clip: auto; white-space: normal; border-width: 0;",
+	//
+	//////////////////////////
+	// Button
+	//////////////////////////
+
+	//////////////////////////
+	// Form
+	//////////////////////////
+
+	//////////////////////////
+	// Input
+	//////////////////////////
+
+	//////////////////////////
+	// List
+	//////////////////////////
 }
 
 // TODO🔰 Add base styles / style reset
