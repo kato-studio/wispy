@@ -374,9 +374,6 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 			raw_name, _, _ := ValueOrTrimmed(each_value_name[1], ctx.Json)
 			item_name := strings.Trim(raw_name, "\"")
 			//
-			// get the value of the attribute
-			// _, value_type, value_path := ValueOrTrimmed(attr_value, ctx.Json)
-			// fmt.Println("Value Path: ", value_path)
 			// check if the value is a boolean
 			if value_type == "ARRAY" {
 				// get the array
@@ -385,6 +382,7 @@ func HandleOperation(name string, contents string, self_closing bool, ctx Render
 					// create a new context with the item
 					new_json, err := sjson.Set("{}", item_name, item.Value())
 					if err == nil {
+						// v-- this might already be done..?
 						// TODO: Don't include all context only the necessary context to component
 						// TODO: implement hoisted context
 						new_ctx := RenderCTX{

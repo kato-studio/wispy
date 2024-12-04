@@ -1,6 +1,13 @@
 package style
 
 var WispyStaticStyles = map[string]string{
+	/* https://patorjk.com/software/taag/#p=testall&f=ANSI%20Regular&t=Core
+	 ██████  ██████  ██████  ███████
+	██      ██    ██ ██   ██ ██
+	██      ██    ██ ██████  █████
+	██      ██    ██ ██   ██ ██
+	 ██████  ██████  ██   ██ ███████
+	*/
 	//////////////////////////
 	// GRID
 	//////////////////////////
@@ -10,7 +17,7 @@ var WispyStaticStyles = map[string]string{
 	"sticky":       "position: sticky;",
 	"hidden":       "display: none;",
 	"block":        "display: block;",
-	"flex":         "display: flex;",
+	"flex":         "display: flex; flex-direction: row;",
 	"grid":         "display: grid;",
 	"inline-block": "display: inline-block;",
 	"inline":       "display: inline;",
@@ -21,6 +28,10 @@ var WispyStaticStyles = map[string]string{
 	"flex-wrap":         "flex-wrap: wrap;",
 	"flex-wrap-reverse": "flex-wrap: wrap-reverse;",
 	"flex-no-wrap":      "flex-wrap: nowrap;",
+	"shrink-1":          "flex-shrink: 1;",
+	"shrink-0":          "flex-shrink: 0;",
+	"grow-1":            "flex-grow: 1;",
+	"grow-0":            "flex-grow: 0;",
 	"items-start":       "align-items: flex-start;",
 	"items-end":         "align-items: flex-end;",
 	"items-center":      "align-items: center;",
@@ -109,13 +120,29 @@ var WispyStaticStyles = map[string]string{
 	"border-dotted": "border-style: dotted;",
 	"border-double": "border-style: double;",
 	"border-none":   "border-style: none;",
-
 	//////////////////////////
 	// ACCESSIBILITY
 	//////////////////////////
 	"sr-only": "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;",
 	"not-sr":  "position: static; width: auto; height: auto; padding: 0; margin: 0; overflow: visible; clip: auto; white-space: normal; border-width: 0;",
-	//
+	//////////////////////////
+	// IMAGE
+	//////////////////////////
+	"object-contain": "object-fit: contain;",
+	"object-cover":   "object-fit: cover;",
+	"object-fill":    "object-fit: fill;",
+	"object-top":     "object-position: top;",
+	"object-bottom":  "object-position: bottom;",
+	"object-left":    "object-position: left;",
+	"object-right":   "object-position: right;",
+	//////////////////////////
+	/* https://patorjk.com/software/taag/#p=testall&f=ANSI%20Regular&t=Components
+	 ██████  ██████  ███    ███ ██████   ██████  ███    ██ ███████ ███    ██ ████████ ███████
+	██      ██    ██ ████  ████ ██   ██ ██    ██ ████   ██ ██      ████   ██    ██    ██
+	██      ██    ██ ██ ████ ██ ██████  ██    ██ ██ ██  ██ █████   ██ ██  ██    ██    ███████
+	██      ██    ██ ██  ██  ██ ██      ██    ██ ██  ██ ██ ██      ██  ██ ██    ██         ██
+	 ██████  ██████  ██      ██ ██       ██████  ██   ████ ███████ ██   ████    ██    ███████
+	*/
 	//////////////////////////
 	// Button
 	//////////////////////////

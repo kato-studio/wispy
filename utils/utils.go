@@ -6,14 +6,13 @@ import (
 	"strings"
 )
 
-/* ----------------------
+/* https://patorjk.com/software/taag/#p=testall&f=ANSI%20Regular&t=Logger
 ██       ██████   ██████   ██████  ███████ ██████
 ██      ██    ██ ██       ██       ██      ██   ██
 ██      ██    ██ ██   ███ ██   ███ █████   ██████
 ██      ██    ██ ██    ██ ██    ██ ██      ██   ██
 ███████  ██████   ██████   ██████  ███████ ██   ██
-
----------------------- */
+*/
 
 type Logger struct {
 	Print       func(any)    // Print logs
@@ -73,14 +72,26 @@ func NewUniqueSet(initial ...string) UniqueSet {
 }
 
 // Add adds a string to the set
-func (s UniqueSet) Add(class string) {
-	s[class] = struct{}{}
+func (s UniqueSet) Add(value string) {
+	s[value] = struct{}{}
 }
 
 // Contains checks if a string exists in the set
-func (s UniqueSet) Contains(class string) bool {
-	_, exists := s[class]
+func (s UniqueSet) Contains(value string) bool {
+	_, exists := s[value]
 	return exists
+}
+
+func (s UniqueSet) Remove(value string) {
+	delete(s, value)
+}
+
+func (s UniqueSet) Join(sep string) string {
+	var result string
+	for ele := range s {
+		result += ele + sep
+	}
+	return result
 }
 
 /*

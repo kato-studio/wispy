@@ -1,5 +1,7 @@
 package style
 
+import "kato-studio/go-wispy/utils"
+
 type StyleCTX struct {
 	Colors            map[string]map[string]string
 	StaticStyles      map[string]string
@@ -23,13 +25,14 @@ func NewStyleCTX(colors map[string]map[string]string) StyleCTX {
 
 type Styles struct {
 	CssVariables map[string]string
-	Base         []string
-	Sm           []string
-	Md           []string
-	Lg           []string
-	Xl           []string
-	_2xl         []string
-	_3xl         []string
+	Static       utils.UniqueSet
+	Base         utils.UniqueSet
+	Sm           utils.UniqueSet
+	Md           utils.UniqueSet
+	Lg           utils.UniqueSet
+	Xl           utils.UniqueSet
+	_2xl         utils.UniqueSet
+	_3xl         utils.UniqueSet
 }
 
 // type ColorsStruct struct {

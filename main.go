@@ -99,36 +99,9 @@ func main() {
 		pageBytes, _ := os.ReadFile("./.build/static/kato.studio/pages/index.html")
 		return c.Send(pageBytes)
 	})
-	app.Get("/style", func(c *fiber.Ctx) error {
-		cssStyles := style.DoThing()
-		return c.JSON(cssStyles)
-	})
-
-	app.Get("/kato/test", func(c *fiber.Ctx) error {
-		// timer start to log processing time
-		start := time.Now()
-		//
-		var ctx = engine.RenderCTX{
-			Json:       gjson.Parse(default_data),
-			Components: map[string]string{},
-			Head:       map[string]string{},
-			Variables:  map[string]string{},
-		}
-		//
-		site_folder, page := engine.RenderPage("/kato.studio/test", ctx)
-		classes := style.ExtractClasses(page)
-		styles_obj := style.WispyStyleGenerate(classes, style.WispyStaticStyles, style.WispyColors)
-		compiled_css := style.WispyStyleCompile(styles_obj)
-		//
-		fmt.Println("Processing time: ", time.Since(start))
-		c.Set("Content-Type", "text/html")
-		return c.SendString(engine.CompilePage(site_folder, page, compiled_css))
-	})
 
 	app.Get("/kato/*", func(c *fiber.Ctx) error {
 		// timer start to log processing time
-		start := time.Now()
-		//
 		var ctx = engine.RenderCTX{
 			Json:       gjson.Parse(default_data),
 			Components: map[string]string{},
@@ -136,12 +109,19 @@ func main() {
 			Variables:  map[string]string{},
 		}
 		//
+		engine_start := time.Now()
 		forwarded_path := strings.Replace(c.Path(), "/kato", "", 1)
 		site_folder, page := engine.RenderPage("/kato.studio"+forwarded_path, ctx)
+		fmt.Println("Render Page Time: ", time.Since(engine_start))
 		//
-		fmt.Println("Processing time: ", time.Since(start))
+		css_start := time.Now()
+		classes := style.ExtractClasses(page)
+		styles_obj := style.WispyStyleGenerate(classes, style.WispyStaticStyles, style.WispyColors)
+		compiled_css := style.WispyStyleCompile(styles_obj)
+		fmt.Println("CSS Processing Time: ", time.Since(css_start))
+		//
 		c.Set("Content-Type", "text/html")
-		return c.SendString(engine.CompilePage(site_folder, page, ""))
+		return c.SendString(engine.CompilePage(site_folder, page, compiled_css))
 	})
 	// this windows check is to prevent the server from failing to bind to the port on windows
 	if windows {

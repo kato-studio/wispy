@@ -29,24 +29,6 @@ func EscapeClassName(raw_class_name, state_string string) string {
 	return escaped_class_name + state_string
 }
 
-func GenCssClass(raw_class_name, state_string, value string, category StyleCategory) string {
-	escaped_class_name := EscapeClassName(raw_class_name, state_string)
-	// Assumption is that this is a static class
-	if category.Attr == "" && category.Format == "" {
-		return fmt.Sprintf(".%s { %s }", escaped_class_name, value)
-	}
-	if category.Format != "" {
-		if category.Options != nil {
-			return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf(category.Format, category.Attr, category.Options[value]))
-		}
-		return fmt.Sprintf(".%s { %s }", escaped_class_name, value)
-	}
-	if category.Options != nil {
-		return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: %s;", category.Attr, category.Options[value]))
-	}
-	return ""
-}
-
 var CLASS_STATES = map[string]string{
 	"hover":    "hover",
 	"focus":    "focus",
@@ -61,9 +43,8 @@ var CLASS_STATES = map[string]string{
 	"before":   ":before",
 }
 
-func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) string {
+func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string, value_type string) {
 	// Handle classes with declarative values
-	var raw_value = "NULLISH"
 	var working_class_name = raw_class_name
 	//
 	// HANDLE STATE PREFIXES
@@ -76,121 +57,166 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) string {
 		var p_len = len(prefixes)
 		if p_len > 1 {
 			// Handle state prefixes
-			fmt.Println("-------------")
 			for i, prefix := range prefixes {
 				if i == p_len-1 {
 					// final element is the class name without state prefix(s)
 					working_class_name = prefix
 					break
 				}
-				fmt.Println("State Prefix: " + prefix)
 				found_state := CLASS_STATES[prefix]
 				if found_state != "" {
 					state_string += ":" + found_state
 				}
+				// DEBUG
+				if i == p_len-1 && found_state == "" {
+					fmt.Println("State-404: " + prefix)
+				}
 			}
 
-			fmt.Println("State Class: " + raw_class_name)
-			fmt.Println("State->: " + state_string)
-			fmt.Println("-------------")
 		}
 	}
 
+	// Escape class name
+	var escaped_class_name = EscapeClassName(media_size+raw_class_name, state_string)
+
 	// STATIC CLASS
-	static_class := Ctx.StaticStyles[working_class_name]
+	var static_class = Ctx.StaticStyles[working_class_name]
 	if static_class != "" {
-		return GenCssClass(raw_class_name, state_string, static_class, StyleCategory{})
+		return fmt.Sprintf(".%s { %s }", escaped_class_name, static_class), "STATIC"
 	}
 	//
+	// HANDLE DYNAMIC CLASSES
 	if strings.Contains(working_class_name, "-") && len(working_class_name) > 1 {
-		var split_index = strings.LastIndex(working_class_name, "-")
-		raw_value = working_class_name[split_index+1:]
-		var class_name = working_class_name[:split_index]
-		var category, category_exists = styleCategories[class_name]
+		var IS_NEGATIVE = false
+		if working_class_name[0] == '-' {
+			working_class_name = working_class_name[1:]
+			IS_NEGATIVE = true
+		}
+		var first_split = strings.IndexRune(working_class_name, '-')
+		var second_split = strings.IndexRune(working_class_name[first_split+1:], '-')
+
+		// base variables
+		var color_shade = "500"
+		var class_name = working_class_name[:first_split]
+		var last_value = ""
+		var mid_value = ""
 		//
+		if second_split != -1 {
+			second_raw := working_class_name[first_split+1:]
+			mid_value = second_raw[:second_split]
+			last_value = second_raw[second_split+1:]
+		} else {
+			mid_value = ""
+			last_value = working_class_name[first_split+1:]
+		}
+		//
+		var category, category_exists = styleCategories[class_name]
+		if !category_exists {
+			// Attempt to find category including the mid_value
+			category, category_exists = styleCategories[class_name+"-"+mid_value]
+		}
+
+		//
+		// IF "CATEGORY" (predefined class options exists)
 		if category_exists {
-			if category.Exclude.Contains(class_name) {
-				return ""
-			}
-			//
+			// ---------------------
 			// HANDLE COLORS
 			if category.IsColor {
 				//
-				escaped_class_name := EscapeClassName(media_size+raw_class_name, state_string)
-				// Opacity
-				split_class := strings.Split(raw_value, "/")
-				value := split_class[0]
+				// Extract Opacity if opacity exists it is the last part of the class name
+				// example: bg-red/50, text-red-500/50
+				split_class := strings.Split(last_value, "/")
+				color_name := mid_value
 				opacity := ""
 				if len(split_class) > 1 {
 					opacity = split_class[1]
 				}
-				// ------------------
-				// Default Color
-				var sub_value = ""
-				var current_sub_value = "500"
-				sub_index := strings.LastIndex(value, "-")
-				// if there is no sub value, then use 500 as default
-				// example: .color-primary = .color-primary-500
-				if sub_index != -1 {
-					sub_value = value[sub_index+1:]
-					current_sub_value = sub_value
-				}
-				//
-				found_color := Ctx.Colors[value][current_sub_value]
+				// Find Color Shade if it exists in the color map which is passed in the context
+				found_color := Ctx.Colors[color_name][color_shade]
 				if found_color != "" {
 					// Opacity
 					if opacity != "" {
 						hex_opacity_value := HEX_OPACITY[opacity]
 						if hex_opacity_value != "" {
-							found_color = found_color + hex_opacity_value
-							variable_name := "--color-" + value + sub_value + "_" + opacity
-							Ctx.AppendCssVariable(variable_name, found_color)
-							return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: var(%s);", category.Attr, variable_name))
+							color_value := found_color + hex_opacity_value
+							variable_name := "--color-" + color_name + color_shade + "_" + opacity
+							Ctx.AppendCssVariable(variable_name, color_value)
+							return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: var(%s);", category.ColorAttr, variable_name)), "COLOR"
 						} else {
+							// Debug
 							fmt.Println("Opacity not found: " + opacity)
 						}
 					} else {
-						variable_name := "--color-" + value + sub_value
+						variable_name := "--color-" + color_name + color_shade
 						Ctx.AppendCssVariable(variable_name, found_color)
-						return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: var(%s);", category.Attr, variable_name))
+						return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: var(%s);", category.ColorAttr, variable_name)), "COLOR"
 					}
 				}
 			}
-			// DYNAMIC CLASS
-			return GenCssClass(media_size+raw_class_name, state_string, raw_value, category)
+
+			// ---------------------
+			// ARTIFICIAL CLASSES
+			// example: .w-[100px] = width: 100px;
+			if last_value[0] == '[' {
+				// extract value
+				artificial_value := last_value[1 : len(last_value)-1]
+				artificial_value = strings.ReplaceAll(artificial_value, "_", " ")
+				return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: %s;", category.Attr, artificial_value)), "ARTIFICIAL"
+			}
+
+			// DYNAMIC FLOW
+			if category.Options != nil && category.Options[last_value] != "" {
+				last_value = category.Options[last_value]
+			}
+			if last_value == "" && category.Format == "" {
+				return "", ""
+			}
+			if IS_NEGATIVE {
+				last_value = "-" + last_value
+			}
+			if category.Format != "" {
+				return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf(category.Format, category.Attr, last_value)), "DYNAMIC"
+			}
+			return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: %s;", category.Attr, last_value)), "DYNAMIC"
+
 		} else {
-			fmt.Println("[404]: " + raw_class_name)
+			fmt.Println("[404]: " + class_name + " (" + raw_class_name + ")")
 		}
 	}
 	//
-	return ""
+	return "", ""
 }
 
-// TODO🔰 Add Hover, Focus, Active, Disabled, etc. support
 func WispyStyleGenerate(classes utils.UniqueSet, static_styles map[string]string, colors map[string]map[string]string) Styles {
 	var output = Styles{
 		CssVariables: map[string]string{},
-		Base:         []string{},
-		Sm:           []string{},
-		Md:           []string{},
-		Lg:           []string{},
-		Xl:           []string{},
-		_2xl:         []string{},
-		_3xl:         []string{},
+		Static:       utils.UniqueSet{},
+		Base:         utils.NewUniqueSet(),
+		Sm:           utils.NewUniqueSet(),
+		Md:           utils.NewUniqueSet(),
+		Lg:           utils.NewUniqueSet(),
+		Xl:           utils.NewUniqueSet(),
+		_2xl:         utils.NewUniqueSet(),
+		_3xl:         utils.NewUniqueSet(),
 	}
 	//
 	for raw_class := range classes {
-		// middleware function to validate result before appending
-		ShouldAppend := func(dest *[]string, src string) {
-			if src != "" {
-				*dest = append(*dest, src)
-			}
-		}
 		//
 		AppendCssVariable := func(variable, value string) {
 			if variable != "" {
 				output.CssVariables[variable] = value
 			}
+		}
+		// middleware function to validate result before appending
+		ShouldAppend := func(dest *utils.UniqueSet, value, value_type string) {
+			if value == "" {
+				return
+			}
+			if value_type == "STATIC" {
+				output.Static.Add(value)
+				return
+			}
+			dest.Add(value)
 		}
 		//
 		CTX := StyleCTX{
@@ -203,54 +229,77 @@ func WispyStyleGenerate(classes utils.UniqueSet, static_styles map[string]string
 		if split_index != -1 {
 			class := raw_class[split_index+1:]
 			media_size := raw_class[:split_index+1]
-			if media_size == "sm:" {
-				ShouldAppend(&output.Sm, ResolveClass(class, media_size, CTX))
+			clean_size := raw_class[:split_index]
+			if clean_size == "sm" {
+				value, value_type := ResolveClass(class, media_size, CTX)
+				ShouldAppend(&output.Sm, value, value_type)
 				continue
-			} else if media_size == "md:" {
-				ShouldAppend(&output.Md, ResolveClass(class, media_size, CTX))
+			} else if clean_size == "md" {
+				value, value_type := ResolveClass(class, media_size, CTX)
+				ShouldAppend(&output.Md, value, value_type)
 				continue
-			} else if media_size == "lg:" {
-				ShouldAppend(&output.Lg, ResolveClass(class, media_size, CTX))
+			} else if clean_size == "lg" {
+				value, value_type := ResolveClass(class, media_size, CTX)
+				ShouldAppend(&output.Lg, value, value_type)
 				continue
-			} else if media_size == "xl:" {
-				ShouldAppend(&output.Xl, ResolveClass(class, media_size, CTX))
+			} else if clean_size == "xl" {
+				value, value_type := ResolveClass(class, media_size, CTX)
+				ShouldAppend(&output.Xl, value, value_type)
 				continue
-			} else if media_size == "2xl:" {
-				ShouldAppend(&output._2xl, ResolveClass(class, media_size, CTX))
+			} else if clean_size == "2xl" {
+				value, value_type := ResolveClass(class, media_size, CTX)
+				ShouldAppend(&output._2xl, value, value_type)
 				continue
-			} else if media_size == "3xl:" {
-				ShouldAppend(&output._3xl, ResolveClass(class, media_size, CTX))
+			} else if clean_size == "3xl" {
+				value, value_type := ResolveClass(class, media_size, CTX)
+				ShouldAppend(&output._3xl, value, value_type)
 				continue
 			}
 		}
 		//
-		ShouldAppend(&output.Base, ResolveClass(raw_class, "", CTX))
+		value, value_type := ResolveClass(raw_class, "", CTX)
+		ShouldAppend(&output.Base, value, value_type)
 	}
 	//
 	return output
 }
 
 func WispyStyleCompile(input Styles) string {
+
+	// TODO: don't hardcode media queries if not needed
 	return fmt.Sprintf(`
-		:root {
-			%[1]s
-		}
-		%[2]s
+:root {
+	%[1]s
+}
 
-		@media (min-width: 640px) {%[3]s}
+%[2]s 
 
-		@media (min-width: 768px) {%[4]s}
+%[3]s
 
-		@media (min-width: 1024px) {%[5]s}
+@media (min-width: 640px) {
+	%[4]s
+}
 
-		@media (min-width: 1280px) {%[6]s}
+@media (min-width: 768px) {
+	%[5]s
+}
+
+@media (min-width: 1024px) {
+	%[6]s
+}
+
+@media (min-width: 1280px) {
+	%[7]s
+}
 	`,
 		MapToCssVariables(input.CssVariables),
-		strings.Join(input.Base, "\n"),
-		strings.Join(input.Sm, "\n"),
-		strings.Join(input.Md, "\n"),
-		strings.Join(input.Lg, "\n"),
-		strings.Join(input.Xl, "\n"),
+		// We need to ensure static classes are always at the top
+		input.Static.Join("\n"),
+		input.Base.Join("\n"),
+		input.Sm.Join("\n"),
+		input.Md.Join("\n"),
+		input.Lg.Join("\n"),
+		input.Xl.Join("\n"),
 	)
 }
 
@@ -260,59 +309,4 @@ func MapToCssVariables(input map[string]string) string {
 		output += fmt.Sprintf("%s: %s;\n", variable, value)
 	}
 	return output
-}
-
-// Example usage function
-func DoThing() Styles {
-	htmlContent := `
-		<section>
-			<!-- Container -->
-			<div class="mx-auto w-full max-w-7xl px-5 py-16 md:px-10 md:py-20 color-red/50">
-				<!-- Title -->
-				<p class="text-center text-sm font-bold uppercase">3 easy steps</p>
-				<h2 class="text-center text-3xl font-bold md:text-5xl hover:color-red"> How it works </h2>
-				<p class="mx-auto mb-8 mt-4 max-w-lg text-center text-sm color-gray-500 sm:text-base md:mb-12 lg:mb-16"> Lorem ipsum dolor sit amet consectetur adipiscing elit ut aliquam,purus sit amet luctus magna fringilla urna </p>
-				<!-- Content -->
-				<div class="grid gap-5 sm:cols-2 md:cols-3 lg:gap-6">
-					<!-- Item -->
-					<div class="grid gap-4 rounded-md border border-solid border-gray-300 p-8 md:p-10">
-						<div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-							<p class="text-sm font-bold sm:text-xl">1</p>
-						</div>
-						<p class="text-xl font-semibold">Find Component</p>
-						<p class="text-sm color-gray-500"> Lorem ipsum dolor sit amet consectetur adipiscing elit ut aliquam, purus sit. </p>
-					</div>
-					<!-- Item -->
-					<div class="grid gap-4 rounded-md border border-solid border-gray-300 p-8 md:p-10">
-						<div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-							<p class="text-sm font-bold sm:text-xl">2</p>
-						</div>
-						<p class="text-xl font-semibold">Copy and Paste</p>
-						<p class="text-sm color-gray-500"> Lorem ipsum dolor sit amet consectetur adipiscing elit ut aliquam, purus sit. </p>
-					</div>
-					<!-- Item -->
-					<div class="grid gap-4 rounded-md border border-solid border-gray-300 p-8 md:p-10">
-						<div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-							<p class="text-sm font-bold sm:text-xl">3</p>
-						</div>
-						<p class="text-xl font-semibold">Done</p>
-						<p class="text-sm color-gray-500"> Lorem ipsum dolor sit amet consectetur adipiscing elit ut aliquam, purus sit. </p>
-					</div>
-				</div>
-			</div>
-		</section>
-		<div class="container mx-10">
-			<div class="bg-blue-500 color-white p-4 ml-3 mr-6">Hello World</div>
-			<div class="flex">
-				<div class="bg-red-500 color-white size-6 p-4">Goodbye World</div>
-				<div class="bg-red-500 color-white p-4">Goodbye World</div>
-				<div class="bg-red-500 color-white size-6 p-4">Goodbye World</div>
-			</div>
-			<div class="blasd--ah_b__oop bsdasdlah blhasasd:123">Hello World</div>
-		</div>
-	`
-	//
-	classes := ExtractClasses(htmlContent)
-	css := WispyStyleGenerate(classes, WispyStaticStyles, WispyColors)
-	return css
 }
