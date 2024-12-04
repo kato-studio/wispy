@@ -8,13 +8,13 @@ import (
 )
 
 // use regex
-func ExtractClasses(htmlContent string) utils.UniqueSet {
+func ExtractClasses(htmlContent string) *utils.OrderedMap[string, struct{}] {
 	classRegex := regexp.MustCompile(`class="([^"]+)"`)
 	matches := classRegex.FindAllStringSubmatch(htmlContent, -1)
-	classes := utils.NewUniqueSet()
+	classes := utils.NewOrderedMap[string, struct{}]()
 	for _, match := range matches {
 		for _, class_name := range strings.Split(match[1], " ") {
-			classes.Add(class_name)
+			classes.Set(class_name, struct{}{})
 		}
 	}
 	return classes
@@ -187,20 +187,20 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string
 	return "", ""
 }
 
-func WispyStyleGenerate(classes utils.UniqueSet, static_styles map[string]string, colors map[string]map[string]string) Styles {
+func WispyStyleGenerate(classes *utils.OrderedMap[string, struct{}], static_styles map[string]string, colors map[string]map[string]string) Styles {
 	var output = Styles{
 		CssVariables: map[string]string{},
-		Static:       utils.UniqueSet{},
-		Base:         utils.NewUniqueSet(),
-		Sm:           utils.NewUniqueSet(),
-		Md:           utils.NewUniqueSet(),
-		Lg:           utils.NewUniqueSet(),
-		Xl:           utils.NewUniqueSet(),
-		_2xl:         utils.NewUniqueSet(),
-		_3xl:         utils.NewUniqueSet(),
+		Static:       utils.NewOrderedMap[string, struct{}](),
+		Base:         utils.NewOrderedMap[string, struct{}](),
+		Sm:           utils.NewOrderedMap[string, struct{}](),
+		Md:           utils.NewOrderedMap[string, struct{}](),
+		Lg:           utils.NewOrderedMap[string, struct{}](),
+		Xl:           utils.NewOrderedMap[string, struct{}](),
+		_2xl:         utils.NewOrderedMap[string, struct{}](),
+		_3xl:         utils.NewOrderedMap[string, struct{}](),
 	}
 	//
-	for raw_class := range classes {
+	for _, raw_class := range classes.Keys() {
 		//
 		AppendCssVariable := func(variable, value string) {
 			if variable != "" {
@@ -208,15 +208,15 @@ func WispyStyleGenerate(classes utils.UniqueSet, static_styles map[string]string
 			}
 		}
 		// middleware function to validate result before appending
-		ShouldAppend := func(dest *utils.UniqueSet, value, value_type string) {
+		ShouldAppend := func(dest *utils.OrderedMap[string, struct{}], value, value_type string) {
 			if value == "" {
 				return
 			}
 			if value_type == "STATIC" {
-				output.Static.Add(value)
+				output.Static.Set(value, struct{}{})
 				return
 			}
-			dest.Add(value)
+			dest.Set(value, struct{}{})
 		}
 		//
 		CTX := StyleCTX{
@@ -232,33 +232,33 @@ func WispyStyleGenerate(classes utils.UniqueSet, static_styles map[string]string
 			clean_size := raw_class[:split_index]
 			if clean_size == "sm" {
 				value, value_type := ResolveClass(class, media_size, CTX)
-				ShouldAppend(&output.Sm, value, value_type)
+				ShouldAppend(output.Sm, value, value_type)
 				continue
 			} else if clean_size == "md" {
 				value, value_type := ResolveClass(class, media_size, CTX)
-				ShouldAppend(&output.Md, value, value_type)
+				ShouldAppend(output.Md, value, value_type)
 				continue
 			} else if clean_size == "lg" {
 				value, value_type := ResolveClass(class, media_size, CTX)
-				ShouldAppend(&output.Lg, value, value_type)
+				ShouldAppend(output.Lg, value, value_type)
 				continue
 			} else if clean_size == "xl" {
 				value, value_type := ResolveClass(class, media_size, CTX)
-				ShouldAppend(&output.Xl, value, value_type)
+				ShouldAppend(output.Xl, value, value_type)
 				continue
 			} else if clean_size == "2xl" {
 				value, value_type := ResolveClass(class, media_size, CTX)
-				ShouldAppend(&output._2xl, value, value_type)
+				ShouldAppend(output._2xl, value, value_type)
 				continue
 			} else if clean_size == "3xl" {
 				value, value_type := ResolveClass(class, media_size, CTX)
-				ShouldAppend(&output._3xl, value, value_type)
+				ShouldAppend(output._3xl, value, value_type)
 				continue
 			}
 		}
 		//
 		value, value_type := ResolveClass(raw_class, "", CTX)
-		ShouldAppend(&output.Base, value, value_type)
+		ShouldAppend(output.Base, value, value_type)
 	}
 	//
 	return output
@@ -294,12 +294,14 @@ func WispyStyleCompile(input Styles) string {
 	`,
 		MapToCssVariables(input.CssVariables),
 		// We need to ensure static classes are always at the top
-		input.Static.Join("\n"),
-		input.Base.Join("\n"),
-		input.Sm.Join("\n"),
-		input.Md.Join("\n"),
-		input.Lg.Join("\n"),
-		input.Xl.Join("\n"),
+		strings.Join(input.Static.Keys(), "\n"),
+		strings.Join(input.Base.Keys(), "\n"),
+		strings.Join(input.Sm.Keys(), "\n"),
+		strings.Join(input.Md.Keys(), "\n"),
+		strings.Join(input.Lg.Keys(), "\n"),
+		strings.Join(input.Xl.Keys(), "\n"),
+		strings.Join(input._2xl.Keys(), "\n"),
+		strings.Join(input._3xl.Keys(), "\n"),
 	)
 }
 

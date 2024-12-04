@@ -116,6 +116,7 @@ func main() {
 		//
 		css_start := time.Now()
 		classes := style.ExtractClasses(page)
+		fmt.Println(strings.Join(classes.Keys(), ", "))
 		styles_obj := style.WispyStyleGenerate(classes, style.WispyStaticStyles, style.WispyColors)
 		compiled_css := style.WispyStyleCompile(styles_obj)
 		fmt.Println("CSS Processing Time: ", time.Since(css_start))

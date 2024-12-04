@@ -25,14 +25,14 @@ func NewStyleCTX(colors map[string]map[string]string) StyleCTX {
 
 type Styles struct {
 	CssVariables map[string]string
-	Static       utils.UniqueSet
-	Base         utils.UniqueSet
-	Sm           utils.UniqueSet
-	Md           utils.UniqueSet
-	Lg           utils.UniqueSet
-	Xl           utils.UniqueSet
-	_2xl         utils.UniqueSet
-	_3xl         utils.UniqueSet
+	Static       *utils.OrderedMap[string, struct{}]
+	Base         *utils.OrderedMap[string, struct{}]
+	Sm           *utils.OrderedMap[string, struct{}]
+	Md           *utils.OrderedMap[string, struct{}]
+	Lg           *utils.OrderedMap[string, struct{}]
+	Xl           *utils.OrderedMap[string, struct{}]
+	_2xl         *utils.OrderedMap[string, struct{}]
+	_3xl         *utils.OrderedMap[string, struct{}]
 }
 
 // type ColorsStruct struct {
