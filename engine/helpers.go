@@ -51,7 +51,8 @@ func ValueOrTrimmed(raw_value string, json gjson.Result) (result string, value_t
 				return found_value.String(), value_type, json_path
 			}
 		}
-		fmt.Println("[Error]: Could not find the value for the JSON path: ", json_path)
+		// Debug
+		// fmt.Println("[Error]: Could not find the value for the JSON path: ", json_path)
 		return "", "Null", json_path
 	}
 
@@ -78,19 +79,20 @@ func ValueOrTrimmed(raw_value string, json gjson.Result) (result string, value_t
 // Insert values into the template from json data
 // Similar to Go's text/template package (benchmarks would be interesting)
 // this is a simple implementation and can be optimized (so is the entire engine :P )
-func InsertValues(contents string, json gjson.Result) string {
-	matches := regex_insert.FindAllString(contents, -1)
-	for _, match := range matches {
-		value, value_type, _ := ValueOrTrimmed(match, json)
-		if value_type == "String" {
-			contents = strings.Replace(contents, match, value, -1)
-		} else {
-			contents = strings.Replace(contents, match, "", -1)
-			fmt.Println("[Error]: NO handling for the value type: ", value_type, " for the value: ", value)
-		}
-	}
-	return contents
-}
+// func InsertValues(contents string, json gjson.Result) string {
+// 	matches := regex_insert.FindAllString(contents, -1)
+// 	for _, match := range matches {
+// 		value, value_type, _ := ValueOrTrimmed(match, json)
+// 		if value_type == "String" {
+// 			contents = strings.Replace(contents, match, value, -1)
+// 		} else {
+// 			contents = strings.Replace(contents, match, "", -1)
+// 			// Debug
+// 			// fmt.Println("[Error]: NO handling for the value type: ", value_type, " for the value: ", value)
+// 		}
+// 	}
+// 	return contents
+// }
 
 // validate domain name (for client sites directory)
 func ValidateDomainName(domain string) bool {

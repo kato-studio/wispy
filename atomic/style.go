@@ -2,16 +2,17 @@ package style
 
 import (
 	"fmt"
-	"kato-studio/go-wispy/utils"
 	"regexp"
 	"strings"
+
+	"github.com/kato-studio/wispy/internal"
 )
 
 // use regex
-func ExtractClasses(htmlContent string) *utils.OrderedMap[string, struct{}] {
+func ExtractClasses(htmlContent string) *internal.OrderedMap[string, struct{}] {
 	classRegex := regexp.MustCompile(`class="([^"]+)"`)
 	matches := classRegex.FindAllStringSubmatch(htmlContent, -1)
-	classes := utils.NewOrderedMap[string, struct{}]()
+	classes := internal.NewOrderedMap[string, struct{}]()
 	for _, match := range matches {
 		for _, class_name := range strings.Split(match[1], " ") {
 			classes.Set(class_name, struct{}{})
@@ -48,7 +49,7 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string
 	var working_class_name = raw_class_name
 	//
 	// HANDLE STATE PREFIXES
-	// notes:
+	// Notes:
 	// - this is not tested for all combinations
 	// - and currently is only meant to handle single state prefix
 	var state_string = ""
@@ -69,7 +70,7 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string
 				}
 				// DEBUG
 				if i == p_len-1 && found_state == "" {
-					fmt.Println("State-404: " + prefix)
+					fmt.Println("[404] could not handle state: " + prefix)
 				}
 			}
 
@@ -180,24 +181,25 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string
 			return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: %s;", category.Attr, last_value)), "DYNAMIC"
 
 		} else {
-			fmt.Println("[404]: " + class_name + " (" + raw_class_name + ")")
+			// Debug
+			// fmt.Println("[404]: " + class_name + " (" + raw_class_name + ")")
 		}
 	}
 	//
 	return "", ""
 }
 
-func WispyStyleGenerate(classes *utils.OrderedMap[string, struct{}], static_styles map[string]string, colors map[string]map[string]string) Styles {
+func WispyStyleGenerate(classes *internal.OrderedMap[string, struct{}], static_styles map[string]string, colors map[string]map[string]string) Styles {
 	var output = Styles{
 		CssVariables: map[string]string{},
-		Static:       utils.NewOrderedMap[string, struct{}](),
-		Base:         utils.NewOrderedMap[string, struct{}](),
-		Sm:           utils.NewOrderedMap[string, struct{}](),
-		Md:           utils.NewOrderedMap[string, struct{}](),
-		Lg:           utils.NewOrderedMap[string, struct{}](),
-		Xl:           utils.NewOrderedMap[string, struct{}](),
-		_2xl:         utils.NewOrderedMap[string, struct{}](),
-		_3xl:         utils.NewOrderedMap[string, struct{}](),
+		Static:       internal.NewOrderedMap[string, struct{}](),
+		Base:         internal.NewOrderedMap[string, struct{}](),
+		Sm:           internal.NewOrderedMap[string, struct{}](),
+		Md:           internal.NewOrderedMap[string, struct{}](),
+		Lg:           internal.NewOrderedMap[string, struct{}](),
+		Xl:           internal.NewOrderedMap[string, struct{}](),
+		_2xl:         internal.NewOrderedMap[string, struct{}](),
+		_3xl:         internal.NewOrderedMap[string, struct{}](),
 	}
 	//
 	for _, raw_class := range classes.Keys() {
@@ -208,7 +210,7 @@ func WispyStyleGenerate(classes *utils.OrderedMap[string, struct{}], static_styl
 			}
 		}
 		// middleware function to validate result before appending
-		ShouldAppend := func(dest *utils.OrderedMap[string, struct{}], value, value_type string) {
+		ShouldAppend := func(dest *internal.OrderedMap[string, struct{}], value, value_type string) {
 			if value == "" {
 				return
 			}

@@ -1,7 +1,0 @@
-<div class="flex">
-  <h2>HI! I'm a global parent!</h2>
-  <small> child here</small><small> child here</small><small> child here</small><small> child here</small>
-  <div>
-    <_slot/>
-  </div>
-</div>

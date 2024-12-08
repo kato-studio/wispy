@@ -9,7 +9,7 @@ tmp_dir = "tmp"
   delay = 1000
   exclude_dir = ["assets", "build", "tmp", "vendor", "testdata"]
   exclude_file = []
-  exclude_regex = ["_test.go"]
+  exclude_regex = ["_test.go", ".html"]
   exclude_unchanged = false
   follow_symlink = false
   full_bin = ""
@@ -47,5 +47,5 @@ tmp_dir = "tmp"
   proxy_port = 0
 
 [screen]
-  clear_on_rebuild = false
-  keep_scroll = true
+  clear_on_rebuild = true
+  keep_scroll = false

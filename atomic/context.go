@@ -1,6 +1,6 @@
 package style
 
-import "kato-studio/go-wispy/utils"
+import "github.com/kato-studio/wispy/internal"
 
 type StyleCTX struct {
 	Colors            map[string]map[string]string
@@ -25,30 +25,15 @@ func NewStyleCTX(colors map[string]map[string]string) StyleCTX {
 
 type Styles struct {
 	CssVariables map[string]string
-	Static       *utils.OrderedMap[string, struct{}]
-	Base         *utils.OrderedMap[string, struct{}]
-	Sm           *utils.OrderedMap[string, struct{}]
-	Md           *utils.OrderedMap[string, struct{}]
-	Lg           *utils.OrderedMap[string, struct{}]
-	Xl           *utils.OrderedMap[string, struct{}]
-	_2xl         *utils.OrderedMap[string, struct{}]
-	_3xl         *utils.OrderedMap[string, struct{}]
+	Static       *internal.OrderedMap[string, struct{}]
+	Base         *internal.OrderedMap[string, struct{}]
+	Sm           *internal.OrderedMap[string, struct{}]
+	Md           *internal.OrderedMap[string, struct{}]
+	Lg           *internal.OrderedMap[string, struct{}]
+	Xl           *internal.OrderedMap[string, struct{}]
+	_2xl         *internal.OrderedMap[string, struct{}]
+	_3xl         *internal.OrderedMap[string, struct{}]
 }
-
-// type ColorsStruct struct {
-// 	Primary   map[string]string
-// 	Secondary map[string]string
-// 	Accent    map[string]string
-// 	Neutral   map[string]string
-// 	Red       map[string]string
-// 	Blue      map[string]string
-// 	Green     map[string]string
-// 	Yellow    map[string]string
-// 	Indigo    map[string]string
-// 	Purple    map[string]string
-// 	Pink      map[string]string
-// 	Grey      map[string]string
-// }
 
 var WispyColors = map[string]map[string]string{
 	"white": {
