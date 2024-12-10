@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang='{{Page "lang"}}'>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {{Page "headers"}}
+  <title>{{Page "Title"}}</title>
+  {{Page "css"}}
+  {{Page "js"}}
+</head>
+
+<body>
+  <header>
+    <h1>{{.Site.Title}}</h1>
+  </header>
+  <main>
+    {{Page "content"}}
+  </main>
+  <footer>
+    footer goes here
+  </footer>
+</body>
+
+</html>
