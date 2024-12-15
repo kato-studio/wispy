@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"regexp"
 	"time"
 
 	"github.com/kato-studio/wispy/atomic"
@@ -12,6 +10,10 @@ import (
 )
 
 var site = "/abc-example.com"
+
+// /
+// Testing Page Rendering with Atomic CSS
+// /
 
 func abc(w http.ResponseWriter, req *http.Request) {
 	var json_start = time.Now()
@@ -54,20 +56,11 @@ func abc(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("------------------------------------------------")
 }
 
-func selfClosing(w http.ResponseWriter, req *http.Request) {
-	// load bightml.html file
-	//
-	raw_html, _ := os.ReadFile("bightml.html")
-	replace_start := time.Now()
-	var re = regexp.MustCompile(`<(\w*?) (.*?)\s*\/>`)
-	result := re.ReplaceAllString(string(raw_html), `<$1 $2></$1>`)
-	//
-	fmt.Println("Replace in", time.Since(replace_start))
-	w.Write([]byte(result))
-}
-
 func main() {
 	http.HandleFunc(site, abc)
 	http.HandleFunc("/self-closing", selfClosing)
+	http.HandleFunc("/test", scannerTest)
+	http.HandleFunc("/scanner-v1", newScannerV1)
+	http.HandleFunc("/scanner-v2", newScannerV2)
 	http.ListenAndServe(":8090", nil)
 }
