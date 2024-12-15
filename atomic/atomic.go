@@ -1,4 +1,4 @@
-package style
+package atomic
 
 import (
 	"fmt"
@@ -8,7 +8,8 @@ import (
 	"github.com/kato-studio/wispy/internal"
 )
 
-// use regex
+// Extracts all classes from the given html string and returns "OrderedMap"
+// we need this to be ordered so class order is maintained to prevent css hierarch issues
 func ExtractClasses(htmlContent string) *internal.OrderedMap[string, struct{}] {
 	classRegex := regexp.MustCompile(`class="([^"]+)"`)
 	matches := classRegex.FindAllStringSubmatch(htmlContent, -1)
@@ -181,6 +182,7 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string
 			return fmt.Sprintf(".%s { %s }", escaped_class_name, fmt.Sprintf("%s: %s;", category.Attr, last_value)), "DYNAMIC"
 
 		} else {
+			// TODO handle error logging
 			// Debug
 			// fmt.Println("[404]: " + class_name + " (" + raw_class_name + ")")
 		}
@@ -189,7 +191,9 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string
 	return "", ""
 }
 
-func WispyStyleGenerate(classes *internal.OrderedMap[string, struct{}], static_styles map[string]string, colors map[string]map[string]string) Styles {
+func Compile(html string, static_styles map[string]string, colors map[string]map[string]string) string {
+	classes := ExtractClasses(html)
+
 	var output = Styles{
 		CssVariables: map[string]string{},
 		Static:       internal.NewOrderedMap[string, struct{}](),
@@ -263,47 +267,33 @@ func WispyStyleGenerate(classes *internal.OrderedMap[string, struct{}], static_s
 		ShouldAppend(output.Base, value, value_type)
 	}
 	//
-	return output
-}
+	//TODO: don't hardcode media queries if not needed
 
-func WispyStyleCompile(input Styles) string {
+	format_string := strings.Join([]string{
+		":root {\n%[1]s\n}",                      // css variables
+		"\n%[2]s",                                // static
+		"\n%[3]s",                                // base
+		"@media (min-width: 640px) {\n%[4]s\n}",  // sm
+		"@media (min-width: 768px) {\n%[5]s\n}",  // md
+		"@media (min-width: 1024px) {\n%[6]s\n}", // lg
+		"@media (min-width: 1280px) {\n%[7]s\n}", // xl
+		"@media (min-width: 1536px) {\n%[8]s\n}", // 2xl
+		"@media (min-width: 1920px) {\n%[9]s\n}", // 3xl
+	}, "\n")
 
-	// TODO: don't hardcode media queries if not needed
-	return fmt.Sprintf(`
-:root {
-	%[1]s
-}
-
-%[2]s 
-
-%[3]s
-
-@media (min-width: 640px) {
-	%[4]s
-}
-
-@media (min-width: 768px) {
-	%[5]s
-}
-
-@media (min-width: 1024px) {
-	%[6]s
-}
-
-@media (min-width: 1280px) {
-	%[7]s
-}
-	`,
-		MapToCssVariables(input.CssVariables),
+	return fmt.Sprintf(
+		format_string,
+		// --- Data to format
+		MapToCssVariables(output.CssVariables),
 		// We need to ensure static classes are always at the top
-		strings.Join(input.Static.Keys(), "\n"),
-		strings.Join(input.Base.Keys(), "\n"),
-		strings.Join(input.Sm.Keys(), "\n"),
-		strings.Join(input.Md.Keys(), "\n"),
-		strings.Join(input.Lg.Keys(), "\n"),
-		strings.Join(input.Xl.Keys(), "\n"),
-		strings.Join(input._2xl.Keys(), "\n"),
-		strings.Join(input._3xl.Keys(), "\n"),
+		strings.Join(output.Static.Keys(), "\n"),
+		strings.Join(output.Base.Keys(), "\n"),
+		strings.Join(output.Sm.Keys(), "\n"),
+		strings.Join(output.Md.Keys(), "\n"),
+		strings.Join(output.Lg.Keys(), "\n"),
+		strings.Join(output.Xl.Keys(), "\n"),
+		strings.Join(output._2xl.Keys(), "\n"),
+		strings.Join(output._3xl.Keys(), "\n"),
 	)
 }
 

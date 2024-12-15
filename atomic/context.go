@@ -1,4 +1,4 @@
-package style
+package atomic
 
 import "github.com/kato-studio/wispy/internal"
 

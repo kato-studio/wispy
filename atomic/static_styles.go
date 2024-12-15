@@ -1,4 +1,4 @@
-package style
+package atomic
 
 var WispyStaticStyles = map[string]string{
 	/* https://patorjk.com/software/taag/#p=testall&f=ANSI%20Regular&t=Core

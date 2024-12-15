@@ -4,4 +4,7 @@
 <p>
   This is a page with a plus sign in the name.
 </p>
+<Card title="Hi I'm title text">
+  I'm a card! hello! this is body text
+</Card>
 

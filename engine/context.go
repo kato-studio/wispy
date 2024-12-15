@@ -2,8 +2,6 @@ package engine
 
 import (
 	"regexp"
-
-	"github.com/tidwall/gjson"
 )
 
 var regex_number = regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+$`)
@@ -17,33 +15,37 @@ const PAGE_FILE = "/+page" + EXT
 
 var DOMAINS = [25]string{"studio", "com", "org", "net", "gov", "edu", "mil", "int", "ca", "co", "uk", "de", "jp", "fr", "au", "us", "ch", "it", "nl", "se", "no", "es", "mil", "io"}
 
-type TemplatePageCtx struct {
-	Title   string
-	Head    string
-	Meta    string
-	Styles  string
-	Scripts string
-	Lang    string
-	Layout  string
+type PageRequestCtx struct {
+	Host    string
+	Path    string
+	Headers map[string]string
+	Params  map[string]string
 }
+type TemplatePageCtx struct {
+	Title      string
+	Request    PageRequestCtx
+	InsertHead string
+	Meta       []string
+	Css        string
+	Js         string
+	Lang       string
+	Layout     string
+}
+
 type TemplateCtx struct {
 	Page       TemplatePageCtx
-	Json       gjson.Result
+	Data       map[string]any
 	Components map[string]string
 }
 
 func NewTemplateCtx(input TemplateCtx) *TemplateCtx {
 	var result = &TemplateCtx{
-		Json:       input.Json,
 		Page:       input.Page,
+		Data:       make(map[string]any),
 		Components: make(map[string]string),
 	}
-
 	if result.Page.Lang == "" {
 		result.Page.Lang = "eng"
-	}
-	if result.Page.Layout == "" {
-		result.Page.Layout = "./shared/layouts/_default" + LAYOUT_FILE
 	}
 
 	return result
