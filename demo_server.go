@@ -11,14 +11,16 @@ import (
 
 var site = "/abc-example.com"
 
+// Testing Page Rendering with Atomic CSS
 func abc(w http.ResponseWriter, req *http.Request) {
 	var json_start = time.Now()
 	json_parsed := gjson.Parse(`{
-			"abc": "example",
-			"Site": {
-				"Title": "ABC Example",
-			}
-		}`)
+		"abc": "example",
+		"Site": {
+			"Title": "ABC Example",
+		}
+	}`)
+
 	fmt.Println("JSON in", time.Since(json_start))
 	var ctx_start = time.Now()
 	var ctx = engine.NewTemplateCtx(engine.TemplateCtx{
@@ -46,5 +48,6 @@ func abc(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	http.HandleFunc(site, abc)
+	http.HandleFunc("/scanner", newScannerV2)
 	http.ListenAndServe(":8090", nil)
 }

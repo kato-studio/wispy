@@ -54,7 +54,7 @@ func Render(template_string string, ctx *TemplateCtx) (bytes.Buffer, error) {
 		Handle Page Layout
 	*/
 	var layout_result = bytes.Buffer{}
-	var layout = "{{Page \"Content\"}}"
+	var layout = `{{Page "Content"}}`
 
 	if ctx.Page.Layout != "" {
 		layout_file, err := os.ReadFile(ctx.Page.Layout)
