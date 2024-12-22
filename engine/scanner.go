@@ -1,3 +1,5 @@
+//* modified version of text.Scanner from Go standard library *//
+//* https://pkg.go.dev/text/scanner
 // Copyright 2009 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -12,7 +14,7 @@
 // literals as defined by the Go language specification. It may be
 // customized to recognize only a subset of those literals and to recognize
 // different identifier and white space characters.
-package scanner
+package engine
 
 import (
 	"bytes"
@@ -652,9 +654,9 @@ func (s *Scanner) Scan() rune {
 
 redo:
 	// skip white space
-	for s.Whitespace&(1<<uint(ch)) != 0 {
-		ch = s.next()
-	}
+	// for s.Whitespace&(1<<uint(ch)) != 0 && s.Whitespace&(1<<uint(s.Peek())) != 0 {
+	// 	ch = s.next()
+	// }
 
 	// start collecting token text
 	s.tokBuf.Reset()

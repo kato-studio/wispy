@@ -9,7 +9,7 @@ import (
 )
 
 // use regex
-func ExtractClasses(htmlContent string) *internal.OrderedMap[string, struct{}] {
+func RegexExtractClasses(htmlContent string) *internal.OrderedMap[string, struct{}] {
 	classRegex := regexp.MustCompile(`class="([^"]+)"`)
 	matches := classRegex.FindAllStringSubmatch(htmlContent, -1)
 	classes := internal.NewOrderedMap[string, struct{}]()
@@ -19,6 +19,10 @@ func ExtractClasses(htmlContent string) *internal.OrderedMap[string, struct{}] {
 		}
 	}
 	return classes
+}
+
+func ClassAttributeFunc() {
+
 }
 
 func EscapeClassName(raw_class_name, state_string string) string {

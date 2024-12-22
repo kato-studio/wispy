@@ -2,8 +2,6 @@ package engine
 
 import (
 	"regexp"
-
-	"github.com/tidwall/gjson"
 )
 
 var regex_number = regexp.MustCompile(`^[-+]?[0-9]*\.?[0-9]+$`)
@@ -28,13 +26,14 @@ type TemplatePageCtx struct {
 }
 type TemplateCtx struct {
 	Page       TemplatePageCtx
-	Json       gjson.Result
+	Data       map[string]any
 	Components map[string]string
+	Site       map[string]string
 }
 
-func NewTemplateCtx(input TemplateCtx) *TemplateCtx {
+func NewCtx(input TemplateCtx) *TemplateCtx {
 	var result = &TemplateCtx{
-		Json:       input.Json,
+		Data:       input.Data,
 		Page:       input.Page,
 		Components: make(map[string]string),
 	}
