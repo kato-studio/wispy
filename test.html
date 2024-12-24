@@ -1,8 +1,31 @@
 boop {{.placeholder}}
-<TitleThing title="I Am A Title!">
-  lorem ipsum dolor sit amet consectetur adipiscing elit
-</TitleThing>
+
 <section class="section section--resources section--faq" id="">
+  <!-- Normal -->
+  {{.site.name}}
+  <!-- Operation -->
+   
+  <!-- Thoughts Needed -->
+  <!-- Multiline Ideas/Concepts -->
+  LIST HERE
+  <x:each link in .list>
+    boop {{link.index}}
+  </x:each>
+  LIST END
+  <x:for link in .list>
+    boop {{link.index}}
+  </x:for>
+  <!-- Example component TitleThing -->
+  <TitleThing title="I Am A Title! [Two]">
+    lorem ipsum dolor sit amet consectetur adipiscing elit
+  </TitleThing>
+  <div class="container">
+    <h2 class="section__title  " tabindex="0">I'm a raw title tag</h2>
+    <p class="section__desc" tabindex="0">Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam sit deserunt delectus veritatis blanditiis odit itaque</p>
+    <div class="section__content" tabindex="0">OTHER STUFF</div>
+  </div>
+
+  <!-- Example component "Card" -->
   <Card class="container  ">
     inner card content stuff here with nested header above! {{.placeholder}}
     <Card class="container  ">
@@ -12,41 +35,4 @@ boop {{.placeholder}}
     {{Eq("I'm an operation!")}}
     TEST END
   </Card>
-  <TitleThing title="I Am A Title!"> prime lorem ipsum dolor sit amet consectetur adipiscing elit</TitleThing>
-  <Card title="Dynamic Card Title 0">
-    This is the card body content.
-  </Card>
-  <TitleThing title="I Am A Title! [Two]">
-    lorem ipsum dolor sit amet consectetur adipiscing elit
-  </TitleThing>
-  <!-- Example component "Card" -->
-  <Card title="Dynamic Card Title 2">
-    This is the card body content.
-  </Card>
-  <!-- Example component TitleThing -->
-  <TitleThing title="I Am A Title! [Three]">
-    lorem ipsum dolor sit amet consectetur adipiscing elit
-  </TitleThing>
-</section>
-<section class="section section--resources section--faq" id="">
-  <!-- Normal -->
-  {{.site.name}}
-  <!-- Operation -->
-   
-  <!-- Thoughts Needed -->
-  <!-- Multiline Ideas/Concepts -->
-  <x:For .list as link>
-    <h2 class="section__title  " tabindex="0">{{.link.name}}</h2>
-  </x:For>
-
-
-  <!-- CONTEXT MINI EXMAPLE -->
-  <TitleThing title="I Am A Title! [Two]">
-    lorem ipsum dolor sit amet consectetur adipiscing elit
-  </TitleThing>
-  <div class="container">
-    <h2 class="section__title  " tabindex="0">I'm a raw title tag</h2>
-    <p class="section__desc" tabindex="0">Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam sit deserunt delectus veritatis blanditiis odit itaque</p>
-    <div class="section__content" tabindex="0">OTHER STUFF</div>
-  </div>
 </section>

@@ -3,12 +3,12 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"html"
+	"io"
 	"os"
 	"strings"
-	"text/scanner"
 )
 
+// LayoutPageInsert inserts the appropriate content into the layout based on the return_value.
 func LayoutPageInsert(return_value string, ctx *TemplateCtx, page_content *bytes.Buffer) string {
 	switch strings.ToLower(return_value) {
 	case "title":
@@ -30,7 +30,8 @@ func LayoutPageInsert(return_value string, ctx *TemplateCtx, page_content *bytes
 	}
 }
 
-func ParseAttributes(s Scanner, attributes *map[string]string, _scan func() rune, key string) {
+// ParseAttributes parses the attributes of an HTML tag.
+func ParseAttributes(s *Scanner, attributes *map[string]string, _scan func() rune, key string) {
 	if s.Peek() == '=' {
 		_scan()
 		_scan()
@@ -40,251 +41,249 @@ func ParseAttributes(s Scanner, attributes *map[string]string, _scan func() rune
 	}
 }
 
+// Render represents the rendering context and functions.
 type Render struct {
 	AttrFuncMap      map[string]AttributeFunc
 	OperationFuncMap map[string]OperationFunc
 	Ctx              *TemplateCtx
 }
 
+func InitEngine(ctx *TemplateCtx) Render {
+	var r Render
+	r.AttrFuncMap = make(map[string]AttributeFunc)
+	r.OperationFuncMap = make(map[string]OperationFunc)
+	r.SetCtx(ctx)
+	return r
+}
+
+// OperationFunc defines the function signature for operations.
 type OperationFunc func(r *Render, values ...string) string
 
+// SetOperationFunc sets an operation function for the render context.
 func (r *Render) SetOperationFunc(operation_name string, handler OperationFunc) *Render {
 	r.OperationFuncMap[operation_name] = handler
 	return r
 }
 
+// AttributeFunc defines the function signature for attribute functions.
 type AttributeFunc func(value string) string
 
+// SetAttributeFunc sets an attribute function for the render context.
 func (r *Render) SetAttributeFunc(attribute_name string, handler AttributeFunc) *Render {
 	r.AttrFuncMap[attribute_name] = handler
 	return r
 }
 
+// SetCtx sets the template context for the render context.
 func (r *Render) SetCtx(ctx *TemplateCtx) *Render {
 	r.Ctx = ctx
 	return r
 }
 
-func (r *Render) Html(template_string string) (string, error) {
+func (r *Render) Html(templateString string) (string, error) {
 	var result strings.Builder
-	var s Scanner
-	//? TODOd: add error handling and better logging for debugging
 	var err error
-	// var ctx = r.Ctx
+	var index = 0
 
-	s.Init(strings.NewReader(template_string))
-	var output strings.Builder
-	var prev_ch rune
-	var ch rune
-
-	var _scan = func() rune {
-		prev_ch = ch
-		ch = s.Scan()
-		return ch
-	}
-
-	for ch := _scan(); ch != scanner.EOF; ch = _scan() {
-		// Used to remove tabs line breaks and chained spaces
-		if ch == ' ' && s.Peek() == ' ' || ch == '\n' || ch == '\u0009' {
-			continue
-		}
-
-		var name = ""
-		var attributes = map[string]string{}
-		var nested_lvl = 0
-		var attributes_complete = false
-		var contents strings.Builder
-		switch true {
-		// ==------------------==
-		// Operation Case
-		// ==------------------==
-		case prev_ch == '<' && ch == 'x' && s.Peek() == '.':
-			for ch = _scan(); ch != scanner.EOF; ch = _scan() {
-				if ch == '-' && s.Peek() == '-' {
-					_scan()
-					if s.Peek() == '>' {
-						_scan()
-						break
-					}
-				}
-			}
-
-		// ==------------------==
-		// Comments Case
-		// Skip comments "<!--" to "-->"
-		// ==------------------==
-		case ch == '<' && s.Peek() == '!':
-			for ch = _scan(); ch != scanner.EOF; ch = _scan() {
-				if ch == '-' && s.Peek() == '-' {
-					_scan()
-					if s.Peek() == '>' {
-						_scan()
-						break
-					}
-				}
-			}
-
-		// ==------------------==
-		// Template/Operation Case:
-		// ==------------------==
-		case (ch == '{' && s.Peek() == '{'):
-			// Handle template tag start
-			for ch = _scan(); ch != scanner.EOF; ch = _scan() {
-				contents.WriteString(s.TokenText())
-				if ch == '}' && s.Peek() == '}' {
-					_scan()
-					r.RenderTemplate(contents.String())
-					break
-				}
-			}
-		// ==------------------==
-		// Components Case:
-		// ==------------------==
-		case ch == '<' && s.Peek() >= 'A' && s.Peek() <= 'Z':
-			_scan()
-			name = s.TokenText()
-			attributes = map[string]string{}
-			nested_lvl = 0
-			attributes_complete = false
-			contents.Reset()
-			for _scan(); ch != scanner.EOF; ch = _scan() {
-				// Used to remove tabs line breaks and chained spaces
-				if ch == ' ' && s.Peek() == ' ' || ch == '\n' || ch == '\u0009' {
-					continue
-				}
-				//
-				value := s.TokenText()
-				// --
-				// handle nested
-				if prev_ch == '<' && value == name && attributes_complete {
-					nested_lvl++
-				}
-				// --
-				// handle normal close
-				if value == ">" && !attributes_complete {
-					attributes_complete = true
-					_scan()
-					// --
-					// handle self close
-				} else if prev_ch == '/' {
-					if value == ">" && !attributes_complete {
-						attributes_complete = true
-						// self-closing tag
-						break
-					} else if value == name {
-						if nested_lvl > 0 {
-							nested_lvl--
-						} else {
-							// skip that last character of closing tag ">"
-							_scan()
-							break
-						}
-					}
-				}
-				// --
-				// handle attributes
-				if attributes_complete {
-					contents.WriteString(s.TokenText())
-				} else {
-					ParseAttributes(s, &attributes, _scan, value)
-				}
-			}
-			// clean up component end tag artifact "</"
-			s := strings.TrimSuffix(contents.String(), "</")
-			r.RenderComponent(name, s, &attributes)
-		// ==------------------==
-		// Happy Flow Write String:
-		// ==------------------==
-		default:
-			output.WriteString(s.TokenText())
-		}
-		//
-		// set previous character variable to check against next run
-		prev_ch = ch
-	}
-
-	result.WriteString(`<code>` + html.EscapeString(output.String()) + `</code>`)
-	return result.String(), err
 }
 
+func Utf8At(doc io.Reader, target string, w io.Writer) {
+
+}
+
+func NextUtf8(doc io.Reader, target string, w io.Writer) {
+
+}
+
+func WriteUntil(doc io.Reader, target string, w io.Writer) {
+
+}
+
+func NextEqualOrWrite(doc io.Reader, target string, w io.Writer) {
+	//
+}
+
+// // Html renders the HTML template string.
+// func (r *Render) Html(template_string string) (string, error) {
+// 	var result strings.Builder
+// 	var s Scanner
+// // 	var err error
+
+// 	s.Init(strings.NewReader(template_string))
+// 	var output strings.Builder
+// 	var txt string
+
+// 	for tok := s.Scan(); tok != EOF; tok = s.Scan() {
+// 		// Used to remove tabs line breaks and chained spaces
+// 		if tok == ' ' && s.Peek() == ' ' || tok == '\n' || tok == '\u0009' {
+// 			continue
+// 		}
+// 		var name = ""
+// 		var attributes = map[string]string{}
+// 		var nested_lvl = 0
+// 		var attributes_complete = false
+// 		var contents strings.Builder
+// 		switch true {
+// 		// ==------------------==
+// 		// Operation Case
+// 		// ==------------------==
+// 		case tok == 'x' && s.Peek() == ':':
+// 			var operationName strings.Builder
+// 			var operationArgs []string
+// 			var inArgs bool
+// 			// Parse the operation name and arguments
+// 			for tok := s.Scan(); tok != EOF; tok = s.Scan() {
+// 				if tok == '>' {
+// 					break
+// 				}
+// 				if tok == ' ' {
+// 					inArgs = true
+// 				}
+// 				txt = s.TokenText()
+// 				if inArgs {
+// 					operationArgs = append(operationArgs, txt)
+// 				} else {
+// 					operationName.WriteString(txt)
+// 				}
+// 			}
+// 			// Execute the operation function if it exists
+// 			if handler, exists := r.OperationFuncMap[operationName.String()]; exists {
+// 				output.WriteString(handler(r, operationArgs...))
+// 			}
+// 			// Skip the closing tag
+// 			for tok := s.Scan(); tok != EOF; tok = s.Scan() {
+// 				if tok == '<' && s.Peek() == '/' {
+// 					for tok := s.Scan(); tok != EOF; tok = s.Scan() {
+// 						if tok == '>' {
+// 							break
+// 						}
+// 					}
+// 					break
+// 				}
+// 			}
+// 		// ==------------------==
+// 		// Comments Case
+// 		// Skip comments "<!--" to "-->"
+// 		// ==------------------==
+// 		case tok == '<' && s.Peek() == '!':
+// 			for tok := s.Scan(); tok != EOF; tok = s.Scan() {
+// 				if tok == '-' && s.Peek() == '-' {
+// 					s.Scan()
+// 					if s.Peek() == '>' {
+// 						s.Scan()
+// 						break
+// 					}
+// 				}
+// 			}
+// 		// ==------------------==
+// 		// Template/Operation Case:
+// 		// ==------------------==
+// 		case (tok == '{' && s.Peek() == '{'):
+// 			// Handle template tag start
+// 			for tok := s.Scan(); tok != EOF; tok = s.Scan() {
+// 				txt = s.TokenText()
+// 				contents.WriteString(txt)
+// 				if tok == '}' && s.Peek() == '}' {
+// 					s.Scan()
+// 					r.RenderTemplate(contents.String())
+// 					break
+// 				}
+// 			}
+// 		// ==------------------==
+// 		// Components Case:
+// 		// ==------------------==
+// 		case tok == '<' && s.Peek() >= 'A' && s.Peek() <= 'Z':
+// 			s.Scan()
+// 			name = s.TokenText()
+// 			attributes = map[string]string{}
+// 			nested_lvl = 0
+// 			attributes_complete = false
+// 			contents.Reset()
+// 			for tok := s.Scan(); tok != EOF; tok = s.Scan() {
+// 				// Used to remove tabs line breaks and chained spaces
+// 				if tok == ' ' && s.Peek() == ' ' || tok == '\n' || tok == '\u0009' {
+// 					continue
+// 				}
+// 				txt = s.TokenText()
+// 				s.Scan()
+// 				txt2 := s.TokenText()
+// 				fmt.Print("boop: ")
+// 				fmt.Println(txt, txt2)
+// 				// --
+// 				// handle nested
+// 				if tok == '<' && txt == name && attributes_complete {
+// 					nested_lvl++
+// 				}
+// 				// --
+// 				// handle normal close
+// 				if tok == '>' && !attributes_complete {
+// 					attributes_complete = true
+// 					// --
+// 					// handle self close
+// 				} else if tok == '/' {
+// 					if tok == '>' && !attributes_complete {
+// 						attributes_complete = true
+// 						// self-closing tag
+// 						break
+// 					} else if txt == name {
+// 						if nested_lvl > 0 {
+// 							nested_lvl--
+// 						} else {
+// 							// skip that last character of closing tag ">"
+// 							s.Scan()
+// 							break
+// 						}
+// 					}
+// 				}
+// 				// --
+// 				// handle attributes
+// 				if attributes_complete {
+// 					contents.WriteString(s.TokenText())
+// 				} else {
+// 					ParseAttributes(&s, &attributes, s.Scan, txt)
+// 				}
+// 			}
+// 			// clean up component end tag artifact "</"
+// 			s := strings.TrimSuffix(contents.String(), "</")
+// 			r.RenderComponent(name, s, &attributes)
+// 		// ==------------------==
+// 		// Happy Flow Write String:
+// 		// ==------------------==
+// 		default:
+// 			output.WriteString(s.TokenText())
+// 		}
+// 	}
+
+// 	result.WriteString(`<code>` + html.EscapeString(output.String()) + `</code>`)
+// 	return result.String(), err
+// }
+
+// RenderComponent renders a component with the given name, contents, and attributes.
 func (r *Render) RenderComponent(name, contents string, attributes *map[string]string) {
 	fmt.Println("COMPS: ")
 	fmt.Println(name, contents)
 	fmt.Println("===========")
 }
 
+// RenderTemplate renders a template with the given contents.
 func (r *Render) RenderTemplate(contents string) {
 	fmt.Println("Template: ")
 	fmt.Println(contents)
 	fmt.Println("===========")
 }
 
+// RenderPage renders a page for the given domain and page path.
 func (r *Render) RenderPage(domain, page_path string) (string, error) {
 	// Read File
 	domain = strings.Trim(domain, "/")
-	var path = "./sites" + domain + "/pages/" + PAGE_FILE
+	var path = ROOT_DIR + domain + "/pages/" + PAGE_FILE
 	file, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
 	//
 	result, err := r.Html(string(file))
-	//? TODO better error handling for dev mod
-	//? next js style error page
+	// TODO: better error handling for dev mode
+	// TODO: next js style error page
 	return result, err
 }
-
-// func Render(template_string string, ctx *TemplateCtx) (bytes.Buffer, error) {
-// 	var result = bytes.Buffer{}
-
-// 	/*
-// 		Custom Template Functions
-// 	*/
-// 	var funcs = template.FuncMap(map[string]interface{}{
-// 		// TODO:
-// 	})
-
-// 	base, err := template.New("template").Funcs(funcs).Parse(template_string)
-
-// 	if err != nil {
-// 		return result, err
-// 	}
-
-// 	err = base.Execute(&result, ctx.Json.Value())
-
-// 	if err != nil {
-// 		return result, err
-// 	}
-
-// 	/*
-// 		Handle Page Layout
-// 	*/
-// 	var layout_result = bytes.Buffer{}
-// 	var layout = `{{Page "Content"}}`
-
-// 	if ctx.Page.Layout != "" {
-// 		layout_file, err := os.ReadFile(ctx.Page.Layout)
-// 		if err != nil {
-// 			return result, err
-// 		}
-// 		layout = string(layout_file)
-// 	} else {
-// 		// TODO: add warning/error
-// 	}
-
-// 	with_layout, err := template.New("template").Funcs(template.FuncMap{
-// 		"Page": func(return_value string) string {
-// 			return LayoutPageInsert(return_value, ctx, &result)
-// 		},
-// 	}).Parse(layout)
-// 	if err != nil {
-// 		return result, err
-// 	}
-
-// 	err = with_layout.Execute(&layout_result, ctx.Json.Value())
-// 	if err != nil {
-// 		return layout_result, err
-// 	}
-
-// 	return layout_result, nil
-// }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kato-studio/wispy/engine"
+	"github.com/kato-studio/wispy/engine/xops"
 )
 
 var site = "/abc-example.com"
@@ -75,10 +76,11 @@ func NewScannerV2(w http.ResponseWriter, req *http.Request) {
 		},
 	})
 
-	var render engine.Render
-	render.SetCtx(ctx)
+	var r = engine.InitEngine(ctx)
+	// Add the operation function to the OperationFuncMap
+	r.SetOperationFunc("each", xops.EachOperation)
 
-	result, _ := render.Html(rawHTMLSmall)
+	result, _ := r.Html(rawHTMLSmall)
 	scanOne_Duration := time.Since(scanOne_time)
 	fmt.Println("Scan Duration: ", scanOne_Duration)
 	w.Header().Add("content-type", "text/html")
