@@ -38,9 +38,8 @@ func abc(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("Context in", time.Since(ctx_start))
 
 	var ren_start = time.Now()
-	var render engine.Render
-	render.SetCtx(ctx)
-	var page_html, err = render.RenderPage(site, "")
+	var r = engine.InitEngine(ctx)
+	var page_html, err = r.RenderPage(site, "")
 	fmt.Println("Rendered in", time.Since(ren_start))
 	fmt.Println("Total in", time.Since(json_start))
 
@@ -79,10 +78,13 @@ func NewScannerV2(w http.ResponseWriter, req *http.Request) {
 	var r = engine.InitEngine(ctx)
 	// Add the operation function to the OperationFuncMap
 	r.SetOperationFunc("each", xops.EachOperation)
-
+	fmt.Print("\n\n\n\n\n\n\n\n\n\n")
+	fmt.Println("restarting..")
+	fmt.Print("\n\n\n\n\n\n\n\n\n\n")
 	result, _ := r.Html(rawHTMLSmall)
 	scanOne_Duration := time.Since(scanOne_time)
-	fmt.Println("Scan Duration: ", scanOne_Duration)
+
+	fmt.Println("\n\nScan Duration: ", scanOne_Duration)
 	w.Header().Add("content-type", "text/html")
 	io.WriteString(w, result)
 }

@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 )
@@ -52,7 +51,7 @@ func InitEngine(ctx *TemplateCtx) Render {
 	var r Render
 	r.AttrFuncMap = make(map[string]AttributeFunc)
 	r.OperationFuncMap = make(map[string]OperationFunc)
-	r.SetCtx(ctx)
+	r.Ctx = ctx
 	return r
 }
 
@@ -74,33 +73,225 @@ func (r *Render) SetAttributeFunc(attribute_name string, handler AttributeFunc) 
 	return r
 }
 
-// SetCtx sets the template context for the render context.
-func (r *Render) SetCtx(ctx *TemplateCtx) *Render {
-	r.Ctx = ctx
-	return r
-}
-
-func (r *Render) Html(templateString string) (string, error) {
+func (r *Render) Html(template_string string) (string, error) {
+	// root variables
 	var result strings.Builder
+	var char rune
+	var length = len(template_string)
 	var err error
 	var index = 0
 
-}
-
-func Utf8At(doc io.Reader, target string, w io.Writer) {
-
-}
-
-func NextUtf8(doc io.Reader, target string, w io.Writer) {
-
-}
-
-func WriteUntil(doc io.Reader, target string, w io.Writer) {
-
-}
-
-func NextEqualOrWrite(doc io.Reader, target string, w io.Writer) {
+	// flags
+	var is_operation bool
+	var is_component bool
+	var in_tag_name bool
+	var in_tag_attrs bool
+	var in_quotes bool
+	// -------
+	var tag_name = ""
+	var tag_attrs = []string{}
+	var tag_contents strings.Builder
+	var nested = 0
 	//
+
+	var normalWrite = func() {
+		if is_component || is_operation {
+			print("~", string(char))
+			tag_contents.WriteRune(char)
+		} else {
+			result.WriteRune(char)
+		}
+	}
+
+	// Start core loop
+	for ; index < length; index++ {
+	redo:
+		if err != nil {
+			fmt.Println("Error: ", err)
+			err = nil
+		}
+
+		char = rune(template_string[index])
+		if index+3 > length {
+			fmt.Print("writing end..")
+			result.WriteString(template_string[index:])
+			break
+		}
+
+		switch char {
+		// ROOT CASE
+		case '"':
+			if in_tag_attrs {
+				in_quotes = !in_quotes
+			}
+		// ROOT CASE
+		case '<':
+			peek := template_string[index+1]
+			//
+			//  Handle nested tags
+			if (is_component || is_operation) && !in_tag_name && !in_tag_attrs {
+				fmt.Println("NESTED!", tag_name)
+				if peek == '/' {
+					test := template_string[index : index+len(tag_name)+2]
+					if test == "</"+tag_name {
+						if nested == 0 {
+							tag_name = ""
+							tag_attrs = []string{}
+							tag_contents.Reset()
+							fmt.Println("FINISHED tag_name: ", tag_name, fmt.Sprint(tag_attrs))
+						} else {
+							nested--
+						}
+					}
+				} else {
+					test := template_string[index : index+len(tag_name)+1]
+					if test == "<"+tag_name {
+						nested++
+					}
+				}
+				normalWrite()
+			}
+
+			test := template_string[index : index+3]
+			if test == "<x:" {
+				is_operation = true
+				in_tag_name = true
+			} else {
+				is_component = peek >= 'A' && peek <= 'Z'
+				if is_component {
+					fmt.Println("COMPONENT! START FOR NAME!")
+					in_tag_name = true
+				}
+			}
+
+			// ~~~~~~~~~~~~~
+			if test == "<!-" {
+				comment_end := strings.Index(template_string[index:], "-->")
+				if comment_end == -1 {
+					err = fmt.Errorf("Comment not closed index[", index, "]")
+					break
+				}
+				// Update index to skip the comment content and the closing tag
+				index += comment_end + 2 // we only need to increment by 2 because we increment by 1 at the end of the loop
+			}
+
+			if is_operation || is_component {
+				index++
+				goto redo
+			} else {
+				normalWrite()
+			}
+
+		// ROOT CASE
+		case ' ':
+			// -----------
+			//! Note to self
+			//! looks like the tag name is not being recorded this is obv an issue :P
+			//! might just be capturing whitespace
+			// -----------
+			if is_component || is_operation {
+				if in_quotes {
+					tag_contents.WriteRune(char)
+				} else //
+				if in_tag_name {
+					tag_name = tag_contents.String()
+					tag_contents.Reset()
+					in_tag_name = false
+					fmt.Println("tag_name: ", tag_name)
+				} else //
+				if in_tag_attrs && tag_contents.Len() > 0 {
+					tag_attrs = append(tag_attrs, tag_contents.String())
+					tag_contents.Reset()
+				}
+			}
+			normalWrite()
+		// ROOT CASE
+		case '>':
+			if is_component || is_operation {
+				if in_tag_name {
+					tag_name = tag_contents.String()
+					tag_contents.Reset()
+					in_tag_name = false
+				}
+				if in_tag_attrs {
+					tag_attrs = append(tag_attrs, tag_contents.String())
+					fmt.Println("tag_attrs: ", tag_attrs)
+					tag_contents.Reset()
+					in_tag_attrs = false
+				}
+			} else {
+				normalWrite()
+			}
+		case '{':
+			peek := template_string[index+1]
+			if peek == '{' {
+				template_end := strings.Index(template_string[index:], "}}")
+				if template_end == -1 {
+					err = fmt.Errorf("Template Tag not closed index[", index, "]")
+					break
+				}
+				fmt.Println("template: ", template_string[index+2:index+template_end])
+				index += template_end + 1 // we only need to increment by 1 because we increment by 1 at the end of the loop
+			} else {
+				normalWrite()
+			}
+		// ROOT DEFAULT
+		default:
+			normalWrite()
+		}
+	}
+
+	return result.String(), err
+}
+
+// RenderComponent renders a component with the given name, contents, and attributes.
+func (r *Render) RenderComponent(name, contents string, attributes *map[string]string) {
+	/* example input that has been parsed
+	<TitleThing title="I Am A Title! [Two]">
+		lorem ipsum dolor sit amet consectetur adipiscing elit
+	</TitleThing>
+	*/
+	fmt.Println("COMPS: ")
+	fmt.Println(name, contents)
+	fmt.Println("===========")
+}
+
+// RenderComponent renders a operation with the given name, contents, and attributes.
+func (r *Render) RenderOperation(name, contents string, attributes *map[string]string) {
+	/* example input that has been parsed
+	<x:each link in .list>
+	  boop {{link.index}}
+	</x:each>
+	*/
+	fmt.Println("OP: ")
+	fmt.Println(name, contents)
+	fmt.Println("===========")
+}
+
+// RenderTemplate renders a template with the given contents.
+func (r *Render) RenderTemplate(contents string) {
+	/* example input that has been parsed
+	{{.site.name}}
+	*/
+	fmt.Println("Template: ")
+	fmt.Println(contents)
+	fmt.Println("===========")
+}
+
+// RenderPage renders a page for the given domain and page path.
+func (r *Render) RenderPage(domain, page_path string) (string, error) {
+	// Read File
+	domain = strings.Trim(domain, "/")
+	var path = ROOT_DIR + domain + "/pages/" + PAGE_FILE
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	//
+	result, err := r.Html(string(file))
+	// TODO: better error handling for dev mode
+	// TODO: next js style error page
+	return result, err
 }
 
 // // Html renders the HTML template string.
@@ -257,33 +448,3 @@ func NextEqualOrWrite(doc io.Reader, target string, w io.Writer) {
 // 	result.WriteString(`<code>` + html.EscapeString(output.String()) + `</code>`)
 // 	return result.String(), err
 // }
-
-// RenderComponent renders a component with the given name, contents, and attributes.
-func (r *Render) RenderComponent(name, contents string, attributes *map[string]string) {
-	fmt.Println("COMPS: ")
-	fmt.Println(name, contents)
-	fmt.Println("===========")
-}
-
-// RenderTemplate renders a template with the given contents.
-func (r *Render) RenderTemplate(contents string) {
-	fmt.Println("Template: ")
-	fmt.Println(contents)
-	fmt.Println("===========")
-}
-
-// RenderPage renders a page for the given domain and page path.
-func (r *Render) RenderPage(domain, page_path string) (string, error) {
-	// Read File
-	domain = strings.Trim(domain, "/")
-	var path = ROOT_DIR + domain + "/pages/" + PAGE_FILE
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	//
-	result, err := r.Html(string(file))
-	// TODO: better error handling for dev mode
-	// TODO: next js style error page
-	return result, err
-}

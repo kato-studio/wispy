@@ -36,3 +36,10 @@ boop {{.placeholder}}
     TEST END
   </Card>
 </section>
+
+
+<div class="card-root p-2 rounded {{.class}}">
+  <div>
+    {{Slot()}}
+  </div>
+</div>
