@@ -81,7 +81,12 @@ func NewScannerV2(w http.ResponseWriter, req *http.Request) {
 	fmt.Print("\n\n\n\n\n\n\n\n\n\n")
 	fmt.Println("restarting..")
 	fmt.Print("\n\n\n\n\n\n\n\n\n\n")
-	result, _ := r.Html(rawHTMLSmall)
+	result, err := r.Html(rawHTMLSmall)
+
+	if err != nil {
+		fmt.Println("\033[31m", err, "\033[0m")
+	}
+
 	scanOne_Duration := time.Since(scanOne_time)
 
 	fmt.Println("\n\nScan Duration: ", scanOne_Duration)
@@ -93,5 +98,6 @@ func main() {
 	const port = ":8090"
 	http.HandleFunc(site, abc)
 	http.HandleFunc("/scanner", NewScannerV2)
+	fmt.Print("Listening on port:", port)
 	http.ListenAndServe(port, nil)
 }
