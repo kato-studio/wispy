@@ -8,10 +8,16 @@ require (
 )
 
 require (
+	github.com/yuin/goldmark v1.4.13 // indirect
+	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/tools v0.29.0 // indirect
+)
+
+require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	golang.org/x/net v0.33.0
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/net v0.34.0
+	golang.org/x/sys v0.29.0 // indirect
 )

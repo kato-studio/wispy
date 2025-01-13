@@ -50,6 +50,10 @@ func GetLogger() Logger {
 	return logger
 }
 
+func IfErrPush(errs *[]error, incoming ...error) {
+	*errs = append(*errs, incoming...)
+}
+
 /* ----------------------
 ██    ██ ███    ██ ██  ██████  ██    ██ ███████ ███████ ███████ ████████
 ██    ██ ████   ██ ██ ██    ██ ██    ██ ██      ██      ██         ██

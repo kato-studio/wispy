@@ -2,12 +2,17 @@ package xops
 
 import (
 	"strings"
-
-	"github.com/kato-studio/wispy/engine"
 )
 
+type Render struct {
+	Ctx struct {
+		Data map[string]interface{}
+	}
+	Html func(string) (string, error)
+}
+
 // Example operation function
-func EachOperation(r *engine.Render, values ...string) string {
+func EachOperation(r *Render, values ...string) string {
 	if len(values) < 3 {
 		return ""
 	}
@@ -31,7 +36,7 @@ func EachOperation(r *engine.Render, values ...string) string {
 	return result.String()
 }
 
-func ForOperation(r *engine.Render, values ...string) string {
+func ForOperation(r *Render, values ...string) string {
 	if len(values) < 3 {
 		return ""
 	}

@@ -1,51 +1,22 @@
 <x:imports 
-  TitleThing="./TitleThing.html"
-  Card="./Card.html"
-  Eq="./Eq.html"
+  TitleThing="@components/TitleThing.html"
+  Card="@components/Card.html"
+  Eq="@components/Eq.html"
 />
 
-boop {{.placeholder}}
-
-<section class="section section--resources section--faq" id="">
-  <!-- Normal -->
-  {{.site.name}}
-  <!-- Operation -->
-
-  <!-- Thoughts Needed -->
-  <!-- Multiline Ideas/Concepts -->
-  LIST HERE
-  <x:each link in .list>
-    boop {{link.index}}
-  </x:each>
-  LIST END
-  <x:for link in .list>
-    boop {{link.index}}
-  </x:for>
-  <!-- Example component TitleThing -->
-  <TitleThing title="I Am A Title! [Two]">
-    lorem ipsum dolor sit amet consectetur adipiscing elit
-  </TitleThing>
-  <div class="container">
-    <h2 class="section__title  " tabindex="0">I'm a raw title tag</h2>
-    <p class="section__desc" tabindex="0">Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam sit deserunt delectus veritatis blanditiis odit itaque</p>
-    <div class="section__content" tabindex="0">OTHER STUFF</div>
+<TitleThing title="I Am A Title! [ONE]">
+  <h2 slot="foo">I've above</h2>
+  <div style="background-color: blue; padding: 10px;">
+    HELLO WORLD
   </div>
-
-  <!-- Example component "Card" -->
-  <Card class="container  ">
-    inner card content stuff here with nested header above! {{.placeholder}}
-    <Card class="container  ">
-      <TitleThing title="I Am A Title!"> prime lorem ipsum dolor sit amet consectetur adipiscing elit</TitleThing>
-      inner card content stuff here with nested header above! {{.placeholder}}
-    </Card>
-    {{Eq("I'm an operation!")}}
-    TEST END
-  </Card>
-</section>
-
-
-<div class="card-root p-2 rounded {{.class}}">
-  <div>
-    {{Slot()}}
+  <div class="container-class thingy">
+    pre div start
+    <TitleThing title="I Am A Title! [IN ONE]">
+      #2# lorem ipsum dolor sit
+      <small class="boop-123"> boop </small>
+      <small>boop</small>
+      amet consectetur adipiscing elit#/2#
+    </TitleThing>
+    pre div end
   </div>
-</div>
+</TitleThing>

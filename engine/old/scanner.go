@@ -14,7 +14,7 @@
 // literals as defined by the Go language specification. It may be
 // customized to recognize only a subset of those literals and to recognize
 // different identifier and white space characters.
-package engine
+package old
 
 import (
 	"bytes"
