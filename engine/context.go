@@ -6,6 +6,7 @@ package engine
 
 const EXT = ".hsml"
 const ROOT_DIR = "./sites"
+const SHARED_DIR = "./shared"
 const LAYOUT_FILE = "/+layout" + EXT
 const PAGE_FILE = "/+page" + EXT
 
@@ -21,11 +22,17 @@ type TemplatePageCtx struct {
 	Lang    string
 	Layout  string
 }
+
+type TemplateSiteCtx struct {
+	Name   string
+	Domain string
+}
+
 type TemplateCtx struct {
 	Page       TemplatePageCtx
 	Data       map[string]any
 	Components map[string]string
-	Site       map[string]string
+	Site       TemplateSiteCtx
 }
 
 func NewCtx(input TemplateCtx) *TemplateCtx {

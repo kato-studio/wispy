@@ -322,19 +322,19 @@ func (r *Render) BuildNodeTree(rawBytes []byte, imports map[string][]byte) ([]*T
 						if tagName == "x:imports" {
 							for newPath, attr := range attributes {
 								componentPath := attributes[attr]
-								if _, hasPrefix := strings.CutPrefix(componentPath, "@components"); hasPrefix {
-									componentPath = "" + newPath
+								if _, hasPrefix := strings.CutPrefix(componentPath, "@"); hasPrefix {
+									componentPath = SHARED_DIR + "/" + newPath + EXT
+									fmt.Println("### " + componentPath)
 								} else if newPath, hasPrefix := strings.CutPrefix(componentPath, "~"); hasPrefix {
-									componentPath = "" + newPath
+									componentPath = ROOT_DIR + "/" + r.Ctx.Site.Name + "/" + newPath + EXT
+									fmt.Println("### " + componentPath)
 								}
 								//
 								rawBytes, err := os.ReadFile(componentPath)
 								internal.IfErrPush(&errs, err)
 								if err != nil {
-									//
 									imports[attr] = rawBytes
 								} else {
-									// Handle error
 									imports[attr] = []byte{}
 								}
 							}
