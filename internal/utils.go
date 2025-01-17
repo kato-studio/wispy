@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -50,8 +49,11 @@ func GetLogger() Logger {
 	return logger
 }
 
+// Random Utils
 func IfErrPush(errs *[]error, incoming ...error) {
-	*errs = append(*errs, incoming...)
+	if len(incoming) > 0 {
+		*errs = append(*errs, incoming...)
+	}
 }
 
 /* ----------------------
@@ -105,19 +107,6 @@ func (s UniqueSet) Join(sep string) string {
      ██    ██    ██   ██ ██ ██  ██ ██ ██    ██      ██
 ███████    ██    ██   ██ ██ ██   ████  ██████  ███████
 */
-
-// remove empty strings, line breaks, and extra spaces
-func CleanString(str string) string {
-	// Regular expression to match multiple whitespace characters
-	whitespace_regex := regexp.MustCompile(`\s+`)
-	line_breakRegex := regexp.MustCompile(`(\r\n|\r|\n)`)
-
-	// Replace all occurrences of the regex with a single space
-	str = whitespace_regex.ReplaceAllString(str, " ")
-	str = line_breakRegex.ReplaceAllString(str, "")
-	return str
-
-}
 
 // split string at next given separator and return the two parts
 func SplitAt(s, sep string) (string, string) {

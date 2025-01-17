@@ -14,13 +14,13 @@ var DOMAINS = [25]string{"studio", "com", "org", "net", "gov", "edu", "mil", "in
 var SELF_CLOSING_TAGS = []string{"img", "br", "hr", "input", "link", "meta", "area", "base", "col", "command", "embed", "keygen", "param", "source", "track", "wbr"}
 
 type TemplatePageCtx struct {
-	Title   string
-	Head    string
-	Meta    string
-	Styles  string
-	Scripts string
-	Lang    string
-	Layout  string
+	Title  string
+	Head   string
+	Meta   string
+	Css    string
+	Js     string
+	Lang   string
+	Layout string
 }
 
 type TemplateSiteCtx struct {
@@ -29,10 +29,9 @@ type TemplateSiteCtx struct {
 }
 
 type TemplateCtx struct {
-	Page       TemplatePageCtx
-	Data       map[string]any
-	Components map[string]string
-	Site       TemplateSiteCtx
+	Page TemplatePageCtx
+	Data map[string]any
+	Site TemplateSiteCtx
 }
 
 func NewCtx(input TemplateCtx) *TemplateCtx {
@@ -56,7 +55,9 @@ type Render struct {
 	AttrFuncMap      map[string]AttributeFunc
 	OperationFuncMap map[string]OperationFunc
 	Ctx              *TemplateCtx
-	GetComponent     func(name string) (rawBytes []byte, err error)
+	Imports          map[string][]byte // path -> []bytes
+	Css              map[string][]byte
+	Js               map[string][]byte
 }
 
 // OperationFunc defines the function signature for operations.
@@ -76,9 +77,13 @@ type TreeNode struct {
 
 // InitEngine initializes the rendering engine with a given context.
 func InitEngine(ctx *TemplateCtx, attributeFuncMap map[string]AttributeFunc, operationFuncMap map[string]OperationFunc) Render {
+
 	return Render{
 		AttrFuncMap:      attributeFuncMap,
 		OperationFuncMap: operationFuncMap,
 		Ctx:              ctx,
+		Imports:          make(map[string][]byte),
+		Js:               make(map[string][]byte),
+		Css:              make(map[string][]byte),
 	}
 }

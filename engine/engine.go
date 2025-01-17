@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -12,61 +13,102 @@ import (
 )
 
 // Html processes the raw HTML bytes and applies templating logic
-func (r *Render) Render(rawBytes []byte, data map[string]any) ([]byte, []error) {
-	fmt.Println("Html render called with data", data)
+// ctxId is used as a unique identifier
+func (r *Render) Render(rawBytes []byte, data map[string]any, attrs map[string]string, children []*TreeNode, ctxId string) ([]byte, []error) {
+	// fmt.Println("Html render; data:", data)
 	var nodes []*TreeNode
 	var errs []error
+	var namedImportPath = make(map[string]string)
+	var output bytes.Buffer
 
 	// Step 1: Build the node tree from raw HTML
-	imports := make(map[string][]byte)
-	nodes, errs = r.BuildNodeTree(rawBytes, imports)
-	if len(errs) > 0 {
-		return nil, errs
-	}
+	nodes, errs = r.BuildNodeTree(rawBytes, ctxId, namedImportPath)
 
-	// Step 2: Process each node in the tree, replacing template variables
-	var output bytes.Buffer
-	for _, node := range nodes {
-		errs := r.processNode(&output, node, data, nil)
-		if len(errs) > 0 {
-			return nil, errs
+	// Component case!
+	fmt.Println("<> ", ctxId)
+	if len(ctxId) > len(ROOT_DIR) && ctxId[:len(ROOT_DIR)] == ROOT_DIR ||
+		len(ctxId) > len(SHARED_DIR) && ctxId[:len(SHARED_DIR)] == SHARED_DIR {
+		fmt.Println("ctxId", ctxId[:2])
+		fmt.Println(ctxId)
+		// 2. Create merged data context with component attributes
+		mergedData := maps.Clone(data)
+		for k, v := range attrs {
+			mergedData[k] = v
 		}
+
+		// 3. Build quick slot lookup
+		slots := make(map[string][]*TreeNode, 2) // Pre-allocate for common case (default + named slot)
+		for _, directChild := range nodes {
+			name := directChild.Attributes["slot"]
+			if name == "" {
+				name = "default"
+			}
+			slots[name] = append(slots[name], directChild)
+		}
+
+		for _, compNode := range children {
+			r.processNode(&output, compNode, mergedData, slots, namedImportPath)
+		}
+		return output.Bytes(), errs
 	}
 
-	// Step 3: Return the processed output
-	return output.Bytes(), nil
+	// Non-component
+	for _, child := range nodes {
+		r.processNode(&output, child, data, nil, namedImportPath)
+	}
+	return output.Bytes(), errs
 }
 
 // processNode processes each node, handling its content, attributes, and children
-func (r *Render) processNode(output *bytes.Buffer, node *TreeNode, data map[string]any, slots map[string][]*TreeNode) []error {
+func (r *Render) processNode(output *bytes.Buffer, node *TreeNode, data map[string]any, slots map[string][]*TreeNode, namedImportPath map[string]string) []error {
 	var errs []error
 
 	switch node.Type {
 	case "component":
 		// Handle components
-		rawBytes, err := r.GetComponent(node.Name)
-		if err == nil {
-			imports := make(map[string][]byte)
-			componentTree, errs := r.BuildNodeTree(rawBytes, imports)
-			if len(errs) > 0 {
-				return errs
-			}
-			if len(componentTree) > 0 {
-				bytes, errs := r.renderComponent(componentTree, node, data)
-				//= wondering if this should exit or if engine should always resolve and pass any errors/warnings along?
-				if len(errs) > 0 {
-					return errs
-				}
-				output.Write(bytes)
-			} else {
-				output.WriteString("[Could not build node tree for \"" + node.Name + "\"]")
-			}
+		compPath, compExists := namedImportPath[node.Name]
+		rawBytes, impExists := r.Imports[compPath]
+		if compExists && impExists {
+			//
+			bytes, compErrs := r.Render(rawBytes, data, node.Attributes, node.Children, compPath)
+			internal.IfErrPush(&errs, compErrs...)
+			output.Write(bytes)
 		} else {
+			// TODO only write string in "dev mode" ("dev mode" not yet implemented)
 			output.WriteString("[Could not load \"" + node.Name + "\"]")
 		}
 		return nil
 	case "operation":
-		// Handle operations (including slots)
+		// Handle Imports (x:imports)
+		if node.Name == "x:imports" {
+			for name, rawImportPath := range node.Attributes {
+				//
+				var importPath = rawImportPath
+				fmt.Println("r.Imports for ::", importPath)
+				if _, exists := r.Imports[importPath]; exists {
+					fmt.Printf("[%s] Already in instance cache \"r.Imports\"", name)
+				} else {
+					var hasSharedPrefix bool
+					importPath, hasSharedPrefix = strings.CutPrefix(importPath, "@")
+					if hasSharedPrefix {
+						importPath = SHARED_DIR + importPath + EXT
+					}
+					var hasSitePrefix bool
+					importPath, hasSitePrefix = strings.CutPrefix(importPath, "~")
+					if hasSitePrefix {
+						importPath = ROOT_DIR + "/" + r.Ctx.Site.Name + importPath + EXT
+					}
+					//
+					rawBytes, err := os.ReadFile(importPath)
+					internal.IfErrPush(&errs, err)
+					if err == nil && (hasSharedPrefix || hasSitePrefix) {
+						namedImportPath[name] = importPath
+						r.Imports[importPath] = rawBytes
+					}
+				}
+			}
+		} else
+		// Handle Slots (x:slots)
 		if node.Name == "x:slot" {
 			slotName := "default"
 			if name, exists := node.Attributes["name"]; exists {
@@ -77,12 +119,14 @@ func (r *Render) processNode(output *bytes.Buffer, node *TreeNode, data map[stri
 			if slotExists {
 				// Slot has been passed process child elements
 				for _, child := range passedChildren {
-					r.processNode(output, child, data, nil)
+					childErrors := r.processNode(output, child, data, nil, namedImportPath)
+					internal.IfErrPush(&errs, childErrors...)
 				}
 			} else {
 				// Handle fallback content
 				for _, child := range node.Children {
-					r.processNode(output, child, data, nil)
+					childErrors := r.processNode(output, child, data, nil, namedImportPath)
+					internal.IfErrPush(&errs, childErrors...)
 				}
 			}
 
@@ -114,7 +158,7 @@ func (r *Render) processNode(output *bytes.Buffer, node *TreeNode, data map[stri
 		output.WriteString(">")
 
 		for _, child := range node.Children {
-			nodeErrs := r.processNode(output, child, data, slots)
+			nodeErrs := r.processNode(output, child, data, slots, namedImportPath)
 			internal.IfErrPush(&errs, nodeErrs...)
 		}
 
@@ -131,36 +175,9 @@ func (r *Render) processNode(output *bytes.Buffer, node *TreeNode, data map[stri
 }
 
 // renderComponent handles component rendering with slot management
-func (r *Render) renderComponent(componentTree []*TreeNode, rawNode *TreeNode, data map[string]any) ([]byte, []error) {
-	var output bytes.Buffer
-	var errs []error
-	var children = rawNode.Children
+// func (r *Render) renderComponent(componentTree []*TreeNode, rawNode *TreeNode, data map[string]any) ([]byte, []error) {
 
-	// 1. Create merged data context with component attributes
-	mergedData := make(map[string]any, len(data)+len(rawNode.Attributes))
-	for k, v := range data {
-		mergedData[k] = v
-	}
-	for k, v := range rawNode.Attributes {
-		mergedData[k] = v
-	}
-
-	// 2. Build quick slot lookup
-	slots := make(map[string][]*TreeNode, 2) // Pre-allocate for common case (default + named slot)
-	for _, child := range children {
-		name := child.Attributes["slot"]
-		if name == "" {
-			name = "default"
-		}
-		slots[name] = append(slots[name], child)
-	}
-
-	for _, compNode := range componentTree {
-		r.processNode(&output, compNode, mergedData, slots)
-	}
-
-	return output.Bytes(), errs
-}
+// }
 
 // processTemplateVariables replaces template placeholders (e.g., {{.variable}}) with actual values from r.ctx.Data
 func (r *Render) processTemplateVariables(input string, data map[string]any) (string, error) {
@@ -205,7 +222,9 @@ func callTemplateFunction(args ...interface{}) string {
 }
 
 // Builds a tree structure.
-func (r *Render) BuildNodeTree(rawBytes []byte, imports map[string][]byte) ([]*TreeNode, []error) {
+// ctxId is used to prevent the same JS/CSS from being hoisted multiple times.
+// for components this is the components path (other sources TBD)
+func (r *Render) BuildNodeTree(rawBytes []byte, ctxId string, namedImportPath map[string]string) ([]*TreeNode, []error) {
 	var root TreeNode
 	var stack []*TreeNode
 	stack = append(stack, &root) // Start with a dummy root node
@@ -238,6 +257,7 @@ func (r *Render) BuildNodeTree(rawBytes []byte, imports map[string][]byte) ([]*T
 			}
 			continue
 		}
+		//
 		if !isWhitespace(b) {
 			validContent = true
 		}
@@ -283,6 +303,70 @@ func (r *Render) BuildNodeTree(rawBytes []byte, imports map[string][]byte) ([]*T
 					reset()
 				}
 			}
+
+			// Handling style tags
+			var stylePrefix = []byte("<style")
+			if bytes.HasPrefix(rawBytes[i:], stylePrefix) {
+				// Find the closing ">" of the <style> tag.
+				tagEndIndex := bytes.Index(rawBytes[i:], []byte(">"))
+				if tagEndIndex == -1 {
+					fmt.Print("[Error]", "Malformed HTML; no closing for <style> tag.")
+					break
+				} else {
+					tagEndIndex += i
+				}
+				// move index forward
+				i += len(stylePrefix)
+				// remove closing bracket
+				styleTag := rawBytes[i:tagEndIndex]
+				attributes := parseAttributes(styleTag)
+				scopeNamespace, isScoped := attributes["scoped"]
+				if scopeNamespace == "" && isScoped {
+					scopeNamespace = strings.ReplaceAll(ctxId, "/", "-")
+				}
+				//
+				closingTag := "</style>"
+				closingIndex := bytes.Index(rawBytes[tagEndIndex:], []byte(closingTag))
+				if closingIndex == -1 {
+					fmt.Print("[Error]", "Malformed HTML; no closing </style>.")
+					break
+				} else {
+					closingIndex += tagEndIndex
+				}
+
+				// Handle non-scoped style tag
+				if !isScoped {
+					commentNode := &TreeNode{
+						Name: "style",
+						Type: "element",
+						// "+4" used to exclude opening "<!--" bytes from comment contents
+						Content: string(rawBytes[i+4 : i+closingIndex]),
+					}
+					parent := stack[len(stack)-1]
+					parent.Children = append(parent.Children, commentNode)
+
+					i = closingIndex + len(closingTag)
+					reset()
+					continue
+				}
+
+				// Handle hoisting scoped styles
+				_, exists := r.Css[ctxId]
+				if !exists {
+					// extract all styles within <style> tag
+					styles := rawBytes[tagEndIndex+1 : closingIndex]
+					// Scope the styles inside the <style> block.
+					var selector = scopeNamespace
+					scopedStyles := scopeStyles(selector, string(styles))
+					r.Css[ctxId] = []byte(scopedStyles)
+					// Append the processed styles and update the offset.
+				}
+
+				i = closingIndex + len(closingTag)
+
+				reset()
+			}
+
 			continue
 		}
 
@@ -315,30 +399,10 @@ func (r *Render) BuildNodeTree(rawBytes []byte, imports map[string][]byte) ([]*T
 						} else {
 							tagName = string(tagContent[:splitIndex])
 						}
+
+						// Node creation logic
 						attributes := parseAttributes(tagContent[splitIndex:])
 						tagType := detectTagType(tagName)
-
-						// Handle imports
-						if tagName == "x:imports" {
-							for newPath, attr := range attributes {
-								componentPath := attributes[attr]
-								if _, hasPrefix := strings.CutPrefix(componentPath, "@"); hasPrefix {
-									componentPath = SHARED_DIR + "/" + newPath + EXT
-									fmt.Println("### " + componentPath)
-								} else if newPath, hasPrefix := strings.CutPrefix(componentPath, "~"); hasPrefix {
-									componentPath = ROOT_DIR + "/" + r.Ctx.Site.Name + "/" + newPath + EXT
-									fmt.Println("### " + componentPath)
-								}
-								//
-								rawBytes, err := os.ReadFile(componentPath)
-								internal.IfErrPush(&errs, err)
-								if err != nil {
-									imports[attr] = rawBytes
-								} else {
-									imports[attr] = []byte{}
-								}
-							}
-						}
 
 						newNode := &TreeNode{
 							Name:       tagName,
@@ -352,7 +416,6 @@ func (r *Render) BuildNodeTree(rawBytes []byte, imports map[string][]byte) ([]*T
 						} else {
 							fmt.Println("[Error] Could not resolve closing tag ", string(tagContent))
 						}
-
 						// Only push non-self-closing tags onto the stack
 						if !isSelfClosing && !slices.Contains(SELF_CLOSING_TAGS, tagName) {
 							stack = append(stack, newNode)

@@ -1,5 +1,5 @@
 <!-- T -->
-<style >
+<style scoped>
   /* Basic styling */
   div {
     border: 1px solid red;
@@ -29,7 +29,7 @@
   }
 </style>
 
-<div style="border: 1px solid red; margin-top: 30px">
+<div  style="border: 1px solid red; margin-top: 30px">
   <x:slot name="foo">
     <small>I'm fallback FOO content for <b>foo</b></small>
   </x:slot>

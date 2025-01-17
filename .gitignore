@@ -11,6 +11,8 @@ logs
 # env
 .env
 
-
 # tests
 *.test.exe
+
+# other
+.DS_Store
