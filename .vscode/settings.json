@@ -1,0 +1,14 @@
+{
+  "cSpell.words": [
+    "atomicstyle",
+    "labstack",
+    "tmpl"
+  ],
+  "files.watcherExclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.cache" : true,
+    "**/.wispy" : true
+  }
+}
