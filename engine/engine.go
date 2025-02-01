@@ -110,7 +110,7 @@ func StartEngine(config WispyConfig, logger echo.Logger) EngineCtx {
 		SiteMap:   make(map[string]SiteStructure, 5),
 		Log:       logger,
 		Config: WispyConfig{
-			SITE_DIR:           ".\\sites",
+			SITE_DIR:           "sites",
 			PAGE_FILE_NAME:     "page",
 			FILE_EXT:           ".html",
 			SHARED_COMP_PREFIX: "wispy",
@@ -147,8 +147,8 @@ func (e *EngineCtx) BuildSiteMap() {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			var domain = entry.Name()
-			siteFolderPath := e.Config.SITE_DIR + "\\" + domain
-			configFilePath := siteFolderPath + "\\" + e.Config.SITE_CONFIG_NAME
+			siteFolderPath := filepath.Join(e.Config.SITE_DIR, domain)
+			configFilePath := filepath.Join(siteFolderPath, e.Config.SITE_CONFIG_NAME)
 			file, err := os.ReadFile(configFilePath)
 			if err != nil {
 				e.Log.Error("Could not find config for ", domain, " at: (", configFilePath, ")")
@@ -163,9 +163,9 @@ func (e *EngineCtx) BuildSiteMap() {
 				e.Log.Error(err)
 			}
 
-			pagesPath := siteFolderPath + "\\pages"
-			layoutsPath := siteFolderPath + "\\layouts"
-			componentsPath := siteFolderPath + "\\components"
+			pagesPath := filepath.Join(siteFolderPath, "pages")
+			layoutsPath := filepath.Join(siteFolderPath, "layouts")
+			componentsPath := filepath.Join(siteFolderPath, "components")
 
 			// Handles Pages
 			filepath.Walk(pagesPath, func(path string, info fs.FileInfo, err error) error {

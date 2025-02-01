@@ -3,13 +3,13 @@ module wispy-example
 go 1.23.4
 
 // https://thewebivore.com/using-replace-in-go-mod-to-point-to-your-local-module/
-replace github.com/kato-studio/wispy => D:\Desktop\kato\wispy
-// MAC /Users/theo/Desktop/kato/wispy
+// replace github.com/kato-studio/wispy => D:\Desktop\kato\wispy
+// replace github.com/kato-studio/wispy => /Users/theo/Desktop/kato/wispy
+replace github.com/kato-studio/wispy => /home/theod/kato/wispy
 
 require (
 	github.com/kato-studio/wispy v0.0.4
 	github.com/labstack/echo/v4 v4.13.3
-	golang.org/x/time v0.8.0
 )
 
 require (
@@ -23,4 +23,5 @@ require (
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/time v0.8.0 // indirect
 )
