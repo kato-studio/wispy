@@ -183,11 +183,6 @@ func (e *EngineCtx) BuildSiteMap() {
 					if err != nil {
 						e.Log.Error("Failed to read templateData file at:", path)
 					}
-					fmt.Println("--")
-					fmt.Println("--", pagePath)
-					fmt.Println("--", domain+pageName)
-					fmt.Println("[Saving]", pageName)
-					fmt.Println("--")
 					siteStructure.Routes[domain+pageName] = PageRoutes{
 						Name:     pageName,
 						Title:    domain,
