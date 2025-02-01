@@ -11,8 +11,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/labstack/echo/v4"
-
-	"github.com/kato-studio/wispy/engine/templateFuncs"
 )
 
 // CONSTS
@@ -39,7 +37,7 @@ type WispyConfig struct {
 	SHARED_DIR string
 }
 
-type Engine struct {
+type EngineCtx struct {
 	// Templates map[string]map[string]*template.Template // Templates per site
 	Templates map[string]*template.Template // Templates per site
 	SiteMap   map[string]SiteStructure      // List of domains/sites from ./[SITE_DIR] for validation & routing
@@ -53,9 +51,9 @@ type SiteStructure struct {
 	Theme map[string]map[string]string `toml:"theme"`
 	//
 	Domain        string // set based on directory name
-	Pages         map[string]*template.Template
-	Layouts       map[string]*template.Template
-	Components    *template.Template
+	Pages         map[string]string
+	Layouts       map[string]string
+	Components    map[string]string
 	Routes        map[string]PageRoutes
 	ContentRoutes map[string]SiteContent
 }
@@ -69,12 +67,15 @@ type MetaTags struct {
 	OtherTags     map[string]string
 }
 type PageRoutes struct {
+	Name     string
 	Url      string
 	Title    string
 	Layout   string
+	Path     string
 	Template string
 	MetaTags
 }
+
 type ContentChange struct {
 	Author  string
 	Date    string
@@ -92,24 +93,24 @@ type SiteContent struct {
 	Changes     map[string]ContentChange
 }
 
-func NewSiteStructure(domain string) SiteStructure {
+func (e *EngineCtx) NewSiteStructure(domain string) SiteStructure {
 	return SiteStructure{
 		Domain:        domain,
 		Routes:        map[string]PageRoutes{},
-		Pages:         make(map[string]*template.Template, 6),
-		Layouts:       make(map[string]*template.Template),
-		Components:    template.New(domain + "-components").Funcs(templateFuncs.GetDefaults()),
+		Pages:         make(map[string]string, 6),
+		Layouts:       make(map[string]string, 2),
+		Components:    make(map[string]string, 6),
 		ContentRoutes: map[string]SiteContent{},
 	}
 }
 
-func StartEngine(config WispyConfig, logger echo.Logger) Engine {
-	return Engine{
+func StartEngine(config WispyConfig, logger echo.Logger) EngineCtx {
+	return EngineCtx{
 		Templates: make(map[string]*template.Template, 20),
 		SiteMap:   make(map[string]SiteStructure, 5),
 		Log:       logger,
 		Config: WispyConfig{
-			SITE_DIR:           "./sites",
+			SITE_DIR:           ".\\sites",
 			PAGE_FILE_NAME:     "page",
 			FILE_EXT:           ".html",
 			SHARED_COMP_PREFIX: "wispy",
@@ -125,7 +126,7 @@ func StartEngine(config WispyConfig, logger echo.Logger) Engine {
 // ---====----
 
 // Initialize and configure the .wispy cache directory
-func (e *Engine) SetupWispyCache() {
+func (e *EngineCtx) SetupWispyCache() {
 	cacheDir := ".wispy"
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		err := os.Mkdir(cacheDir, os.ModePerm)
@@ -136,7 +137,7 @@ func (e *Engine) SetupWispyCache() {
 }
 
 // Dynamically build the host-to-site mapping based on `./sites` directory
-func (e *Engine) BuildSiteMap() {
+func (e *EngineCtx) BuildSiteMap() {
 	buildStart := time.Now()
 	entries, err := os.ReadDir(e.Config.SITE_DIR)
 	if err != nil {
@@ -146,8 +147,8 @@ func (e *Engine) BuildSiteMap() {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			var domain = entry.Name()
-			siteFolderPath := e.Config.SITE_DIR + "/" + domain
-			configFilePath := siteFolderPath + "/" + e.Config.SITE_CONFIG_NAME
+			siteFolderPath := e.Config.SITE_DIR + "\\" + domain
+			configFilePath := siteFolderPath + "\\" + e.Config.SITE_CONFIG_NAME
 			file, err := os.ReadFile(configFilePath)
 			if err != nil {
 				e.Log.Error("Could not find config for ", domain, " at: (", configFilePath, ")")
@@ -155,16 +156,16 @@ func (e *Engine) BuildSiteMap() {
 			}
 
 			// Create new site object
-			var siteStructure SiteStructure = NewSiteStructure(domain)
+			var siteStructure SiteStructure = e.NewSiteStructure(domain)
 			_, err = toml.Decode(string(file), &siteStructure)
 			if err != nil {
 				e.Log.Error("Failed to load config for ", domain, " at: (", configFilePath, ")")
 				e.Log.Error(err)
 			}
 
-			pagesPath := siteFolderPath + "/pages"
-			layoutsPath := siteFolderPath + "/layouts"
-			componentsPath := siteFolderPath + "/components"
+			pagesPath := siteFolderPath + "\\pages"
+			layoutsPath := siteFolderPath + "\\layouts"
+			componentsPath := siteFolderPath + "\\components"
 
 			// Handles Pages
 			filepath.Walk(pagesPath, func(path string, info fs.FileInfo, err error) error {
@@ -173,25 +174,26 @@ func (e *Engine) BuildSiteMap() {
 					return err
 				}
 				//
+				path = filepath.FromSlash(path)
 				pagePath, isPageFile := strings.CutSuffix(path, e.Config.PAGE_FILE_NAME+e.Config.FILE_EXT)
 				if isPageFile {
-					templateName := strings.Replace(pagePath, "sites/"+domain+"/pages", domain, 1)
-					templateName = strings.TrimSuffix(templateName, "/")
+					pageName := strings.TrimPrefix(pagePath, "sites\\"+domain+"\\pages")
+					pageName = strings.TrimSuffix(pageName, "\\")
 					templateData, err := os.ReadFile(path)
 					if err != nil {
 						e.Log.Error("Failed to read templateData file at:", path)
 					}
-
-					newTemplate, err := template.New(templateName).Parse(string(templateData))
-					if err != nil {
-						e.Log.Error("Failed to create template from file at:", path, err)
-					}
-					siteStructure.Pages[templateName] = newTemplate
-					siteStructure.Routes[templateName] = PageRoutes{
-						Url:      templateName,
+					fmt.Println("--")
+					fmt.Println("--", pagePath)
+					fmt.Println("--", domain+pageName)
+					fmt.Println("[Saving]", pageName)
+					fmt.Println("--")
+					siteStructure.Routes[domain+pageName] = PageRoutes{
+						Name:     pageName,
 						Title:    domain,
-						Layout:   "sites/abc.test/layouts/default.html",
-						Template: path,
+						Layout:   "sites\\abc.test\\layouts\\default.html",
+						Path:     path,
+						Template: string(templateData),
 						MetaTags: MetaTags{
 							Title:         "domain title",
 							Description:   "page description here boop",
@@ -205,26 +207,23 @@ func (e *Engine) BuildSiteMap() {
 				return nil
 			})
 
-			fmt.Println("---")
 			// Handle Components
 			filepath.WalkDir(componentsPath, func(path string, dr fs.DirEntry, err error) error {
-				fmt.Println("Walking... ", path)
 				if err != nil {
 					e.Log.Error("Error parsing comps %s: %v", path, err)
 					return err
 				}
-				fmt.Println(filepath.Ext(path), filepath.Ext(path) == e.Config.FILE_EXT)
 				if filepath.Ext(path) == e.Config.FILE_EXT {
-					_, err := siteStructure.Components.ParseFiles(path)
+					templateData, err := os.ReadFile(path)
 					if err != nil {
-						e.Log.Error("Error parsing comps %s: %v", path, err)
+						e.Log.Error(err)
+						return err
 					}
+					componentName := strings.TrimSuffix(filepath.Base(path), e.Config.FILE_EXT)
+					siteStructure.Components[componentName] = string(templateData)
 				}
 				return nil
 			})
-			fmt.Println("Components")
-			fmt.Println(siteStructure.Components.DefinedTemplates())
-			fmt.Println("---")
 
 			// Handle Layouts
 			filepath.Walk(layoutsPath, func(path string, info fs.FileInfo, err error) error {
@@ -241,11 +240,7 @@ func (e *Engine) BuildSiteMap() {
 						e.Log.Error("Failed to read templateData file at:", path)
 					}
 
-					newTemplate, err := template.New(layoutName).Parse(string(templateData))
-					if err != nil {
-						e.Log.Error("Failed to create template from file at:", path, err)
-					}
-					siteStructure.Layouts[layoutName] = newTemplate
+					siteStructure.Layouts[layoutName] = string(templateData)
 				}
 				return nil
 			})

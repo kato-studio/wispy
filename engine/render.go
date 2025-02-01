@@ -5,20 +5,19 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"strings"
 	textDanger "text/template"
 
 	"github.com/labstack/echo/v4"
-
-	"github.com/kato-studio/wispy/engine/templateFuncs"
 )
 
 // ---====----
 // Engine Render/Template functions
 // ---====----
-func (e *Engine) RenderRoute(w io.Writer, host string, data map[string]interface{}, c echo.Context) error {
+func (e *EngineCtx) RenderRoute(w io.Writer, host string, data map[string]interface{}, c echo.Context) error {
 	name := strings.TrimSuffix(c.Request().URL.Path, "/")
 	templateName := host + name
 	// Get the specific template
@@ -26,41 +25,25 @@ func (e *Engine) RenderRoute(w io.Writer, host string, data map[string]interface
 	route, routeExist := site.Routes[templateName]
 	if !siteMapOk || !routeExist {
 		// TODO: error reporting
+		fmt.Println("~looking for", templateName)
 		e.Log.Error("Site not found: ", host)
+		fmt.Print(maps.Keys(site.Routes))
 		return echo.NewHTTPError(404, "404 not found,", c.Request().URL.Path)
 	}
-
-	base := template.New(templateName).Funcs(templateFuncs.GetDefaults())
-	base.ParseFiles(route.Template)
-	fmt.Println("Components")
-	// base.
-	// fmt.Println(site.Components.DefinedTemplates())
-	// fmt.Println("DefinedTemplates")
-	// fmt.Println(base.DefinedTemplates())
-	// newBase, errBase := base.AddParseTree("components", site.Components.Tree)
-	// fmt.Println(newBase.DefinedTemplates())
-	// if errBase != nil {
-	// 	fmt.Println(errBase)
-	// }
-
-	// fmt.Print("base AFTER ")
-	// fmt.Println(base.DefinedTemplates())
-	// fmt.Println("---")
-
-	tempWriter := &bytes.Buffer{}
-
-	err := base.ExecuteTemplate(tempWriter, "Page", data)
-	if err != nil {
-		e.Log.Error("[Error] Could not render ", err)
-		fmt.Println("----")
-		fmt.Println(err)
-		fmt.Println("----")
-		return echo.NewHTTPError(http.StatusInternalServerError, "Could not render "+templateName, err)
+	//
+	base, baseErr := template.New("base").Funcs(GetDefaultFuncs(e)).Parse(route.Template)
+	if baseErr != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Create page template", route.Path, "\n\n", baseErr)
 	}
 
-	data["PageHeadContents"] = e.CreateHeadContent(route)
-	data["PageContents"] = tempWriter.String()
+	renderedPage := bytes.NewBuffer([]byte{})
+	base.Execute(renderedPage, data)
+	data["PageContents"] = string(renderedPage.String())
 
+	// Todo: only handle this if needed otherwise if flag to return only page contents
+	data["PageHeadContents"] = e.CreateHeadContent(route)
+
+	//
 	layoutBytes, err := os.ReadFile(route.Layout)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Could read layout file", route.Layout, "\n\n", err)
@@ -75,7 +58,7 @@ func (e *Engine) RenderRoute(w io.Writer, host string, data map[string]interface
 	return layoutTemplate.Execute(w, data)
 }
 
-func (e *Engine) CreateHeadContent(route PageRoutes) string {
+func (e *EngineCtx) CreateHeadContent(route PageRoutes) string {
 	mt := route.MetaTags
 
 	ogTitle := mt.OgTitle
