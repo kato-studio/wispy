@@ -6,14 +6,14 @@ import (
 	"strings"
 
 	styleInternal "github.com/kato-studio/wispy/atomicstyle/internal"
-	"github.com/kato-studio/wispy/internal"
+	dt "github.com/kato-studio/wispy/utils/datatypes"
 )
 
 // use regex
-func RegexExtractClasses(htmlContent string) *internal.OrderedMap[string, struct{}] {
+func RegexExtractClasses(htmlContent string) *dt.OrderedMap[string, struct{}] {
 	classRegex := regexp.MustCompile(`class="([^"]+)"`)
 	matches := classRegex.FindAllStringSubmatch(htmlContent, -1)
-	classes := internal.NewOrderedMap[string, struct{}]()
+	classes := dt.NewOrderedMap[string, struct{}]()
 	for _, match := range matches {
 		for _, class_name := range strings.Split(match[1], " ") {
 			classes.Set(class_name, struct{}{})
@@ -206,17 +206,17 @@ func ResolveClass(raw_class_name, media_size string, Ctx StyleCTX) (value string
 	return "", ""
 }
 
-func WispyStyleGenerate(classes *internal.OrderedMap[string, struct{}], static_styles map[string]string, colors map[string]map[string]string) Styles {
+func WispyStyleGenerate(classes *dt.OrderedMap[string, struct{}], static_styles map[string]string, colors map[string]map[string]string) Styles {
 	var output = Styles{
 		CssVariables: map[string]string{},
-		Static:       internal.NewOrderedMap[string, struct{}](),
-		Base:         internal.NewOrderedMap[string, struct{}](),
-		Sm:           internal.NewOrderedMap[string, struct{}](),
-		Md:           internal.NewOrderedMap[string, struct{}](),
-		Lg:           internal.NewOrderedMap[string, struct{}](),
-		Xl:           internal.NewOrderedMap[string, struct{}](),
-		_2xl:         internal.NewOrderedMap[string, struct{}](),
-		_3xl:         internal.NewOrderedMap[string, struct{}](),
+		Static:       dt.NewOrderedMap[string, struct{}](),
+		Base:         dt.NewOrderedMap[string, struct{}](),
+		Sm:           dt.NewOrderedMap[string, struct{}](),
+		Md:           dt.NewOrderedMap[string, struct{}](),
+		Lg:           dt.NewOrderedMap[string, struct{}](),
+		Xl:           dt.NewOrderedMap[string, struct{}](),
+		_2xl:         dt.NewOrderedMap[string, struct{}](),
+		_3xl:         dt.NewOrderedMap[string, struct{}](),
 	}
 	//
 	for _, raw_class := range classes.Keys() {
@@ -227,7 +227,7 @@ func WispyStyleGenerate(classes *internal.OrderedMap[string, struct{}], static_s
 			}
 		}
 		// middleware function to validate result before appending
-		ShouldAppend := func(dest *internal.OrderedMap[string, struct{}], value, value_type string) {
+		ShouldAppend := func(dest *dt.OrderedMap[string, struct{}], value, value_type string) {
 			if value == "" {
 				return
 			}

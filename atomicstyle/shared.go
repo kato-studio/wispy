@@ -1,6 +1,8 @@
 package atomicstyle
 
-import "github.com/kato-studio/wispy/internal"
+import (
+	dt "github.com/kato-studio/wispy/utils/datatypes"
+)
 
 type StyleCTX struct {
 	Colors            map[string]map[string]string
@@ -25,14 +27,14 @@ func NewStyleCTX(colors map[string]map[string]string) StyleCTX {
 
 type Styles struct {
 	CssVariables map[string]string
-	Static       *internal.OrderedMap[string, struct{}]
-	Base         *internal.OrderedMap[string, struct{}]
-	Sm           *internal.OrderedMap[string, struct{}]
-	Md           *internal.OrderedMap[string, struct{}]
-	Lg           *internal.OrderedMap[string, struct{}]
-	Xl           *internal.OrderedMap[string, struct{}]
-	_2xl         *internal.OrderedMap[string, struct{}]
-	_3xl         *internal.OrderedMap[string, struct{}]
+	Static       *dt.OrderedMap[string, struct{}]
+	Base         *dt.OrderedMap[string, struct{}]
+	Sm           *dt.OrderedMap[string, struct{}]
+	Md           *dt.OrderedMap[string, struct{}]
+	Lg           *dt.OrderedMap[string, struct{}]
+	Xl           *dt.OrderedMap[string, struct{}]
+	_2xl         *dt.OrderedMap[string, struct{}]
+	_3xl         *dt.OrderedMap[string, struct{}]
 }
 
 var WispyColors = map[string]map[string]string{

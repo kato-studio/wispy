@@ -3,13 +3,9 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"io"
-	"maps"
-	"net/http"
-	"os"
+	"path/filepath"
 	"strings"
-	textDanger "text/template"
 
 	"github.com/labstack/echo/v4"
 )
@@ -19,43 +15,43 @@ import (
 // ---====----
 func (e *EngineCtx) RenderRoute(w io.Writer, host string, data map[string]interface{}, c echo.Context) error {
 	name := strings.TrimSuffix(c.Request().URL.Path, "/")
-	templateName := host + name
+	templateName := host + filepath.FromSlash(name)
+
 	// Get the specific template
 	site, siteMapOk := e.SiteMap[host]
 	route, routeExist := site.Routes[templateName]
 	if !siteMapOk || !routeExist {
-		// TODO: error reporting
-		fmt.Println("~looking for", templateName)
-		e.Log.Error("Site not found: ", host)
-		fmt.Print(maps.Keys(site.Routes))
+		fmt.Println("Site not found:", host, "(siteFound?:", siteMapOk, "routeExist:", routeExist, ")")
+		fmt.Println("~looking for", templateName, "current routes... [ ]")
 		return echo.NewHTTPError(404, "404 not found,", c.Request().URL.Path)
 	}
-	//
-	base, baseErr := template.New("base").Funcs(GetDefaultFuncs(e)).Parse(route.Template)
-	if baseErr != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Create page template", route.Path, "\n\n", baseErr)
-	}
+
+	// Create a new rendering context
+	ctx := NewRenderCtx(e, data, site)
+
+	// ✅ Ensure FuncMap is applied before parsing the template
+	// base, baseErr := template.New("base").Funcs(GetDefaultFuncs(&ctx)).Parse(route.Template)
+	// if baseErr != nil {
+	// 	fmt.Println("Error parsing template:", baseErr)
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "Error parsing template:", route.Path, "\n\n", baseErr)
+	// }
+
+	// // Render the template into a buffer
+	// renderedPage := bytes.NewBuffer([]byte{})
+	// err := base.Execute(renderedPage, data)
+	// if err != nil {
+	// 	fmt.Println("Error executing template:", err)
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "Error executing template: \n"+fmt.Sprint(err), route.Path, "\n\n", err)
+	// }
 
 	renderedPage := bytes.NewBuffer([]byte{})
-	base.Execute(renderedPage, data)
-	data["PageContents"] = string(renderedPage.String())
-
-	// Todo: only handle this if needed otherwise if flag to return only page contents
+	// Store the rendered page content
+	data["PageContents"] = renderedPage.String()
 	data["PageHeadContents"] = e.CreateHeadContent(route)
 
-	//
-	layoutBytes, err := os.ReadFile(route.Layout)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Could read layout file", route.Layout, "\n\n", err)
-	}
-
-	layoutTemplate, err := textDanger.New(templateName + ":layout").Parse(string(layoutBytes))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Could render with layout", templateName, err)
-	}
-
-	// 🚀 🚀
-	return layoutTemplate.Execute(w, data)
+	// 🚀 Final output
+	fmt.Fprintf(w, `<!DOCTYPE html><html lang="%s">%s<body>%s</body></html>`, ctx.Lang, data["PageHeadContents"], data["PageContents"])
+	return nil
 }
 
 func (e *EngineCtx) CreateHeadContent(route PageRoutes) string {

@@ -2,8 +2,8 @@ package engine
 
 import (
 	"fmt"
-	"html/template"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,102 +13,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// CONSTS
-// Define the essential favicon filenames
-var ESSENTIAL_SERVE = map[string]struct{}{
-	"about.txt":                  {},
-	"android-chrome-192x192.png": {},
-	"android-chrome-512x512.png": {},
-	"apple-touch-icon.png":       {},
-	"favicon-16x16.png":          {},
-	"favicon-32x32.png":          {},
-	"favicon.ico":                {},
-	"site.webmanifest":           {},
-}
-
-// TemplateRenderer supports multi-site template rendering
-type WispyConfig struct {
-	SITE_DIR           string
-	SITE_CONFIG_NAME   string
-	PAGE_FILE_NAME     string
-	FILE_EXT           string
-	SHARED_COMP_PREFIX string
-	// PUBLIC_DIR         string
-	SHARED_DIR string
-}
-
-type EngineCtx struct {
-	// Templates map[string]map[string]*template.Template // Templates per site
-	Templates map[string]*template.Template // Templates per site
-	SiteMap   map[string]SiteStructure      // List of domains/sites from ./[SITE_DIR] for validation & routing
-	Config    WispyConfig
-	Log       echo.Logger // accessible list of configured settings
-}
-
-type SiteStructure struct {
-	// import from config
-	Name  string                       `toml:"name"`
-	Theme map[string]map[string]string `toml:"theme"`
-	//
-	Domain        string // set based on directory name
-	Pages         map[string]string
-	Layouts       map[string]string
-	Components    map[string]string
-	Routes        map[string]PageRoutes
-	ContentRoutes map[string]SiteContent
-}
-type MetaTags struct {
-	Title         string
-	Description   string
-	OgTitle       string
-	OgDescription string
-	OgType        string
-	OgUrl         string
-	OtherTags     map[string]string
-}
-type PageRoutes struct {
-	Name     string
-	Url      string
-	Title    string
-	Layout   string
-	Path     string
-	Template string
-	MetaTags
-}
-
-type ContentChange struct {
-	Author  string
-	Date    string
-	Changes map[string]string
-}
-type SiteContent struct {
-	Name        string
-	Title       string
-	Description string
-	Slug        string
-	Category    string
-	Tags        string
-	Author      string
-	LastUpdate  string
-	Changes     map[string]ContentChange
-}
-
-func (e *EngineCtx) NewSiteStructure(domain string) SiteStructure {
-	return SiteStructure{
-		Domain:        domain,
-		Routes:        map[string]PageRoutes{},
-		Pages:         make(map[string]string, 6),
-		Layouts:       make(map[string]string, 2),
-		Components:    make(map[string]string, 6),
-		ContentRoutes: map[string]SiteContent{},
-	}
-}
-
 func StartEngine(config WispyConfig, logger echo.Logger) EngineCtx {
 	return EngineCtx{
-		Templates: make(map[string]*template.Template, 20),
-		SiteMap:   make(map[string]SiteStructure, 5),
-		Log:       logger,
+		SiteMap: make(map[string]SiteStructure, 5),
+		Log:     logger,
 		Config: WispyConfig{
 			SITE_DIR:           "sites",
 			PAGE_FILE_NAME:     "page",
@@ -136,7 +44,7 @@ func (e *EngineCtx) SetupWispyCache() {
 	}
 }
 
-// Dynamically build the host-to-site mapping based on `./sites` directory
+// Dynamically build the host-to-site mapping based on `sites` directory
 func (e *EngineCtx) BuildSiteMap() {
 	buildStart := time.Now()
 	entries, err := os.ReadDir(e.Config.SITE_DIR)
@@ -244,5 +152,10 @@ func (e *EngineCtx) BuildSiteMap() {
 		}
 	}
 
-	fmt.Println("Site Map Build Time: ", time.Since(buildStart))
+	fmt.Println("SiteMap Build Time: ", time.Since(buildStart))
+	fmt.Print("Sites [")
+	for v := range maps.Keys(e.SiteMap) {
+		fmt.Print(" \"", v, "\"")
+	}
+	fmt.Println(" ] ")
 }

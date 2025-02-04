@@ -1,21 +1,4 @@
-package internal
-
-/* https://patorjk.com/software/taag/#p=display&f=ANSI%20Regular&t=Logger
-██       ██████   ██████   ██████  ███████ ██████
-██      ██    ██ ██       ██       ██      ██   ██
-██      ██    ██ ██   ███ ██   ███ █████   ██████
-██      ██    ██ ██    ██ ██    ██ ██      ██   ██
-███████  ██████   ██████   ██████  ███████ ██   ██
-*/
-
-type Logger struct {
-	Print       func(any)    // Print logs
-	Fatal       func(any)    // Fatal logs
-	Error       func(string) // Error logs
-	Warn        func(string) // Warn logs
-	Info        func(string) // Info logs
-	ServerPrint func(string) // ServerPrint logs
-}
+package datatypes
 
 /* ----------------------
 ██    ██ ███    ██ ██  ██████  ██    ██ ███████ ███████ ███████ ████████
@@ -49,7 +32,6 @@ func (s UniqueSet) Contains(value string) bool {
 	return exists
 }
 
-// -
 func (s UniqueSet) Remove(value string) {
 	delete(s, value)
 }

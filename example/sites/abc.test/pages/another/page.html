@@ -1,5 +1,26 @@
 <div>
   <h1>Hello world!</h1>
-</div>
+  {{include "Boop"}}
+  {{.Page.Title}}
+  {{navbar .}}
+    <li><a href="/">Home</a></li>
+    <li><a href="/about">About</a></li>
+  {{end}}
 
-{{include "Boop"}}
+  {{footer .}}
+
+  {{include "Boop"}}
+    <p>I am content</p>
+  {{end}}
+
+
+  {{if eq(.Page.Title "Boop")}}
+    <p>I am content from {{.Page.Title}}</p>
+  {{end}}
+
+  {{include "LinkButton" props(
+      link="/home"
+      text="I'm a Home? Button"
+    )
+  }}
+</div>

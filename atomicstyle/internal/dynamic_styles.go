@@ -2,8 +2,6 @@ package internal
 
 import (
 	"maps"
-
-	"github.com/kato-studio/wispy/internal"
 )
 
 type StyleCategory struct {
@@ -11,7 +9,7 @@ type StyleCategory struct {
 	ColorAttr       string
 	Directions      map[string]string
 	Options         map[string]string
-	Exclude         internal.UniqueSet
+	Exclude         []string
 	Format          string
 	IsColor         bool
 	PrefixHasStatic bool
@@ -144,7 +142,7 @@ var StyleCategories = map[string]StyleCategory{
 		IsColor:   true,
 		Attr:      "font-size",
 		ColorAttr: "color",
-		Exclude:   internal.NewUniqueSet("left", "right", "center", "justify"),
+		Exclude:   []string{"left", "right", "center", "justify"},
 		Options: map[string]string{
 			"xs": "0.75rem", "sm": "0.875rem", "base": "1rem", "lg": "1.125rem", "xl": "1.25rem", "2xl": "1.5rem", "3xl": "1.875rem", "4xl": "2.25rem", "5xl": "3rem", "6xl": "4rem",
 		},
