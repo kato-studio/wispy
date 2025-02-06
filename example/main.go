@@ -15,15 +15,14 @@ import (
 
 func main() {
 	const port = ":80"
-	var app = echo.New()
 
 	// Static Middleware
-	app.Static("/public", "./public")
+	engine.Echo.Static("/public", "./public")
 
 	// ### Middleware:
 	// Logging and Security
-	app.Use(middleware.Logger())
-	app.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
+	engine.Echo.Use(middleware.Logger())
+	engine.Echo.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
 		Skipper:             middleware.DefaultSkipper,
 		StackSize:           4 << 10, // 4 KB
 		DisableStackAll:     false,
@@ -43,20 +42,16 @@ func main() {
 	// app.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(12))))
 	// - Upload
 	// app.Use(middleware.BodyLimit("2M"))
-
-	var eng = engine.StartEngine(engine.WispyConfig{}, app.Logger)
-
-	eng.BuildSiteMap()
-
 	// Routes
-	app.GET("*", func(c echo.Context) error {
-		host := c.Request().Host
+
+	engine.Echo.GET("*", func(c echo.Context) error {
+		domain := c.Request().Host
 		requestPath := c.Request().URL.Path
 		filename := filepath.Base(requestPath)
 
 		// Handle essential site files served from "/"
 		if _, exists := engine.ESSENTIAL_SERVE[filename]; exists {
-			return c.File("sites/" + host + "/public/essential" + filename)
+			return c.File("sites/" + domain + "/public/essential" + filename)
 		}
 
 		// Testing
@@ -64,16 +59,26 @@ func main() {
 		data := map[string]interface{}{
 			"title": "Welcome to " + c.Request().Host,
 		}
-		results := bytes.NewBuffer([]byte{})
-		err := eng.RenderRoute(results, host, data, c)
+
+		// Look up the site structure for the domain.
+		site, exists := engine.SiteMap[domain]
+		if !exists {
+			return fmt.Errorf("domain %s not found", domain)
+		}
+
+		page, err := site.RenderRoute(requestPath, data, c)
 		if err != nil {
+			engine.Log.Error(err)
 			return err
 		}
+
+		var results = bytes.Buffer{}
+		results.WriteString(page)
 
 		fmt.Println("----------")
 		fmt.Println("[] Render Time", time.Since(startTime))
 
-		classes := atomicstyle.RegexExtractClasses(results.String())
+		classes := atomicstyle.RegexExtractClasses(page)
 		compiledCss := atomicstyle.WispyStyleGenerate(classes, atomicstyle.WispyStaticStyles, atomicstyle.WispyColors)
 		styleTime := time.Now()
 		results.WriteString("<style>")
@@ -87,6 +92,12 @@ func main() {
 		return c.HTMLBlob(http.StatusOK, results.Bytes())
 	})
 
+	// Internal System setup
+	engine.BuildSiteMap()
+	fmt.Println("-----")
+	fmt.Print(len(engine.SiteMap))
+
 	// Start server
-	app.Logger.Fatal(app.Start(port))
+	engine.Log.Fatal(engine.Echo.Start(port))
+
 }

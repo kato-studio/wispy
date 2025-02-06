@@ -3,7 +3,6 @@ package engine
 import (
 	"fmt"
 	"io/fs"
-	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,28 +12,110 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func StartEngine(config WispyConfig, logger echo.Logger) EngineCtx {
-	return EngineCtx{
-		SiteMap: make(map[string]SiteStructure, 5),
-		Log:     logger,
-		Config: WispyConfig{
-			SITE_DIR:           "sites",
-			PAGE_FILE_NAME:     "page",
-			FILE_EXT:           ".html",
-			SHARED_COMP_PREFIX: "wispy",
-			// PUBLIC_DIR:         "public",
-			SHARED_DIR:       "shared",
-			SITE_CONFIG_NAME: "config.toml",
-		},
+/*
+=================================================================
+Core External Functions
+=================================================================
+*/
+
+// SiteStructure represents a single site, with its pages, layouts, and components.
+type SiteStructure struct {
+	Domain     string
+	Routes     map[string]PageRoutes
+	Layouts    map[string]string
+	Components map[string]string
+	// Add other fields as needed (e.g., site-specific config settings)
+}
+
+// PageRoutes holds information about a page.
+type PageRoutes struct {
+	Name     string
+	Title    string
+	Layout   string
+	Path     string
+	Template string
+	MetaTags MetaTags
+}
+
+// MetaTags holds metadata information for a page.
+type MetaTags struct {
+	Title         string
+	Description   string
+	OgTitle       string
+	OgDescription string
+	OgType        string
+	OgUrl         string
+}
+
+// RenderRoute renders a page route for a given domain and page name.
+// It looks up the page in the site's route map, executes the page template,
+// and then wraps it in a layout if specified.
+// The data parameter can include additional dynamic values and is augmented with
+// the render context under the key "_ctx".
+// The route key is assumed to be in the form "domain/pageName" (e.g. "example.com/about").
+func (site *SiteStructure) RenderRoute(requestPath string, data map[string]interface{}, c echo.Context) (string, error) {
+	// Construct the route key. If route is empty, key becomes "domain/".
+	routeKey := site.Domain + requestPath
+	fmt.Println("Looking for...", requestPath)
+	fmt.Println("Looking for as ...", routeKey)
+	route, exists := site.Routes[routeKey]
+	if !exists {
+		return "", fmt.Errorf("route %s not found", routeKey)
+	}
+
+	// Create the render context and inject it into the data.
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	// Optionally, inject additional values such as the page title.
+	data["title"] = route.Title
+
+	// Create a new template engine with the render context.
+	tmplEngine := NewTemplateEngine()
+
+	// Render the page template.
+	pageContent, err := tmplEngine.Execute(route.Template, data)
+	if err != nil {
+		return "", fmt.Errorf("failed to render page: %w", err)
+	}
+
+	// If a layout is specified, render it with the page content injected as "slot".
+	if route.Layout != "" {
+		// Determine the layout key from the layout file name.
+		layoutKey := strings.TrimSuffix(filepath.Base(route.Layout), Wispy.FILE_EXT)
+		layoutTemplate, exists := site.Layouts[layoutKey]
+		if !exists {
+			return "", fmt.Errorf("layout %s not found", layoutKey)
+		}
+
+		// Inject the rendered page content as "slot" into the data.
+		data["slot"] = pageContent
+
+		// Render the layout template.
+		layoutContent, err := tmplEngine.Execute(layoutTemplate, data)
+		if err != nil {
+			return "", fmt.Errorf("failed to render layout: %w", err)
+		}
+		return layoutContent, nil
+	}
+
+	// If no layout is specified, return the page content directly.
+	return pageContent, nil
+}
+
+// NewSiteStructure creates a new SiteStructure with initialized maps.
+func NewSiteStructure(domain string) SiteStructure {
+	return SiteStructure{
+		Domain:     domain,
+		Routes:     make(map[string]PageRoutes),
+		Layouts:    make(map[string]string),
+		Components: make(map[string]string),
 	}
 }
 
-// ---====----
-// Setup / Initialization functions
-// ---====----
-
-// Initialize and configure the .wispy cache directory
-func (e *EngineCtx) SetupWispyCache() {
+// SetupWispyCache ensures the .wispy cache directory exists.
+func SetupWispyCache() {
 	cacheDir := ".wispy"
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		err := os.Mkdir(cacheDir, os.ModePerm)
@@ -44,118 +125,140 @@ func (e *EngineCtx) SetupWispyCache() {
 	}
 }
 
-// Dynamically build the host-to-site mapping based on `sites` directory
-func (e *EngineCtx) BuildSiteMap() {
+// BuildSiteMap builds the host-to-site mapping by reading directories from the sites folder.
+func BuildSiteMap() {
 	buildStart := time.Now()
-	entries, err := os.ReadDir(e.Config.SITE_DIR)
+	// Read the sites directory.
+	entries, err := os.ReadDir(Wispy.SITE_DIR)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to read sites directory: %v", err))
 	}
 
+	// Process each site (directory)
 	for _, entry := range entries {
 		if entry.IsDir() {
-			var domain = entry.Name()
-			siteFolderPath := filepath.Join(e.Config.SITE_DIR, domain)
-			configFilePath := filepath.Join(siteFolderPath, e.Config.SITE_CONFIG_NAME)
-			file, err := os.ReadFile(configFilePath)
+			domain := entry.Name()
+			siteFolderPath := filepath.Join(Wispy.SITE_DIR, domain)
+			configFilePath := filepath.Join(siteFolderPath, Wispy.SITE_CONFIG_NAME)
+
+			// Read and decode the site config.
+			configBytes, err := os.ReadFile(configFilePath)
 			if err != nil {
-				e.Log.Error("Could not find config for ", domain, " at: (", configFilePath, ")")
-				e.Log.Error(err)
+				fmt.Println(err)
+				Log.Error("Could not find config for ", domain, " at ", configFilePath, ": ", err)
+				continue
 			}
 
-			// Create new site object
-			var siteStructure SiteStructure = e.NewSiteStructure(domain)
-			_, err = toml.Decode(string(file), &siteStructure)
-			if err != nil {
-				e.Log.Error("Failed to load config for ", domain, " at: (", configFilePath, ")")
-				e.Log.Error(err)
+			siteStructure := NewSiteStructure(domain)
+			if _, err := toml.Decode(string(configBytes), &siteStructure); err != nil {
+				fmt.Println(err)
+				Log.Error("Failed to load config for ", domain, " at ", configFilePath, ": ", err)
 			}
 
+			// Build pages, layouts, and components paths.
 			pagesPath := filepath.Join(siteFolderPath, "pages")
 			layoutsPath := filepath.Join(siteFolderPath, "layouts")
 			componentsPath := filepath.Join(siteFolderPath, "components")
 
-			// Handles Pages
+			// Handle Pages: walk through the pages directory.
 			filepath.Walk(pagesPath, func(path string, info fs.FileInfo, err error) error {
 				if err != nil {
-					fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+					fmt.Println(err)
+					Log.Error("Error accessing path ", path, ": ", err)
 					return err
 				}
-				//
-				path = filepath.FromSlash(path)
-				pagePath, isPageFile := strings.CutSuffix(path, e.Config.PAGE_FILE_NAME+e.Config.FILE_EXT)
-				if isPageFile {
-					pageName := strings.TrimPrefix(pagePath, "sites\\"+domain+"\\pages")
-					pageName = strings.TrimSuffix(pageName, "\\")
-					templateData, err := os.ReadFile(path)
-					if err != nil {
-						e.Log.Error("Failed to read templateData file at:", path)
-					}
-					siteStructure.Routes[domain+pageName] = PageRoutes{
-						Name:     pageName,
-						Title:    domain,
-						Layout:   "sites\\abc.test\\layouts\\default.html",
-						Path:     path,
-						Template: string(templateData),
-						MetaTags: MetaTags{
-							Title:         "domain title",
-							Description:   "page description here boop",
-							OgTitle:       "domain title",
-							OgDescription: "page description here boop",
-							OgType:        "text",
-							OgUrl:         domain,
-						},
+				// Only process files with the configured extension.
+				if !info.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
+					// Check if file name (without extension) matches the page file name.
+					baseName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
+					if baseName == Wispy.PAGE_FILE_NAME {
+						// Determine the page name as the relative directory from the pages folder.
+						relDir, err := filepath.Rel(pagesPath, filepath.Dir(path))
+						if err != nil {
+							fmt.Println(err)
+							Log.Error("Error computing relative path for ", path, ": ", err)
+							return err
+						}
+						pageName := relDir
+						if pageName == "." {
+							pageName = ""
+						}
+						templateData, err := os.ReadFile(path)
+						if err != nil {
+							fmt.Println(err)
+							Log.Error("Failed to read page template at ", path, ": ", err)
+							return err
+						}
+						// Use a key combining the domain and the pageName.
+						routeKey := domain + "/" + pageName
+						fmt.Println("Saving " + routeKey)
+						// For now, default the layout to default.html in layouts.
+						defaultLayoutPath := filepath.Join(siteFolderPath, "layouts", "default"+Wispy.FILE_EXT)
+						siteStructure.Routes[routeKey] = PageRoutes{
+							Name:     pageName,
+							Title:    domain,
+							Layout:   defaultLayoutPath,
+							Path:     path,
+							Template: string(templateData),
+							MetaTags: MetaTags{
+								Title:         domain + " title",
+								Description:   "Page description here",
+								OgTitle:       domain + " title",
+								OgDescription: "Page description here",
+								OgType:        "text",
+								OgUrl:         domain,
+							},
+						}
 					}
 				}
 				return nil
 			})
 
-			// Handle Components
-			filepath.WalkDir(componentsPath, func(path string, dr fs.DirEntry, err error) error {
+			// Handle Components: walk through the components directory.
+			filepath.WalkDir(componentsPath, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
-					e.Log.Error("Error parsing comps %s: %v", path, err)
+					Log.Error("Error accessing component path ", path, ": ", err)
 					return err
 				}
-				if filepath.Ext(path) == e.Config.FILE_EXT {
+				if !d.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
 					templateData, err := os.ReadFile(path)
 					if err != nil {
-						e.Log.Error(err)
+						Log.Error("Failed to read component file at ", path, ": ", err)
 						return err
 					}
-					componentName := strings.TrimSuffix(filepath.Base(path), e.Config.FILE_EXT)
+					componentName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
 					siteStructure.Components[componentName] = string(templateData)
 				}
 				return nil
 			})
 
-			// Handle Layouts
+			// Handle Layouts: walk through the layouts directory.
 			filepath.Walk(layoutsPath, func(path string, info fs.FileInfo, err error) error {
 				if err != nil {
-					fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+					Log.Error("Error accessing layout path ", path, ": ", err)
 					return err
 				}
-
-				thisLayoutPath, isLayoutFile := strings.CutSuffix(path, e.Config.FILE_EXT)
-				layoutName := filepath.Base(thisLayoutPath)
-				if isLayoutFile {
+				if !info.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
 					templateData, err := os.ReadFile(path)
 					if err != nil {
-						e.Log.Error("Failed to read templateData file at:", path)
+						Log.Error("Failed to read layout file at ", path, ": ", err)
+						return err
 					}
-
+					layoutName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
 					siteStructure.Layouts[layoutName] = string(templateData)
 				}
 				return nil
 			})
 
-			e.SiteMap[domain] = siteStructure
+			SiteMap[domain] = siteStructure
 		}
 	}
 
 	fmt.Println("SiteMap Build Time: ", time.Since(buildStart))
-	fmt.Print("Sites [")
-	for v := range maps.Keys(e.SiteMap) {
-		fmt.Print(" \"", v, "\"")
+	// Log the list of sites for confirmation.
+	var domains []string
+	for domain := range SiteMap {
+		domains = append(domains, domain)
 	}
-	fmt.Println(" ] ")
+	fmt.Println("Sites: ", domains)
 }
