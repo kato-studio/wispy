@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/kato-studio/wispy/engine/template"
 	"github.com/labstack/echo/v4"
 )
 
@@ -18,42 +19,13 @@ Core External Functions
 =================================================================
 */
 
-// SiteStructure represents a single site, with its pages, layouts, and components.
-type SiteStructure struct {
-	Domain     string
-	Routes     map[string]PageRoutes
-	Layouts    map[string]string
-	Components map[string]string
-	// Add other fields as needed (e.g., site-specific config settings)
-}
-
-// PageRoutes holds information about a page.
-type PageRoutes struct {
-	Name     string
-	Title    string
-	Layout   string
-	Path     string
-	Template string
-	MetaTags MetaTags
-}
-
-// MetaTags holds metadata information for a page.
-type MetaTags struct {
-	Title         string
-	Description   string
-	OgTitle       string
-	OgDescription string
-	OgType        string
-	OgUrl         string
-}
-
 // RenderRoute renders a page route for a given domain and page name.
 // It looks up the page in the site's route map, executes the page template,
 // and then wraps it in a layout if specified.
 // The data parameter can include additional dynamic values and is augmented with
 // the render context under the key "_ctx".
 // The route key is assumed to be in the form "domain/pageName" (e.g. "example.com/about").
-func (site *SiteStructure) RenderRoute(requestPath string, data map[string]interface{}, c echo.Context) (string, error) {
+func (site *SiteStructure) RenderRoute(requestPath string, data map[string]interface{}, c echo.Context) (output string, err error) {
 	// Construct the route key. If route is empty, key becomes "domain/".
 	routeKey := site.Domain + requestPath
 	fmt.Println("Looking for...", requestPath)
@@ -71,37 +43,24 @@ func (site *SiteStructure) RenderRoute(requestPath string, data map[string]inter
 	// Optionally, inject additional values such as the page title.
 	data["title"] = route.Title
 
-	// Create a new template engine with the render context.
-	tmplEngine := NewTemplateEngine()
+	// Create a new template engine.
+	engine := template.NewTemplateEngine()
 
-	// Render the page template.
-	pageContent, err := tmplEngine.Execute(route.Template, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to render page: %w", err)
-	}
+	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
+	ctx := template.NewRenderCtx(map[string]interface{}{
+		"Domain":      "example.com",
+		"title":       "Welcome to abc.test!!",
+		"showContent": "true", // any non-empty string except "false" is truthy
+		"content":     "   This is some sample content.   ",
+		"items":       "apple, banana, cherry",
+		"condition":   "true",
+	})
 
-	// If a layout is specified, render it with the page content injected as "slot".
-	if route.Layout != "" {
-		// Determine the layout key from the layout file name.
-		layoutKey := strings.TrimSuffix(filepath.Base(route.Layout), Wispy.FILE_EXT)
-		layoutTemplate, exists := site.Layouts[layoutKey]
-		if !exists {
-			return "", fmt.Errorf("layout %s not found", layoutKey)
-		}
+	// Render the sample template from file with timing logs.
+	fmt.Println("\nRendered Template:")
+	output, err = template.RenderString(route.Template, engine, ctx)
 
-		// Inject the rendered page content as "slot" into the data.
-		data["slot"] = pageContent
-
-		// Render the layout template.
-		layoutContent, err := tmplEngine.Execute(layoutTemplate, data)
-		if err != nil {
-			return "", fmt.Errorf("failed to render layout: %w", err)
-		}
-		return layoutContent, nil
-	}
-
-	// If no layout is specified, return the page content directly.
-	return pageContent, nil
+	return output, err
 }
 
 // NewSiteStructure creates a new SiteStructure with initialized maps.

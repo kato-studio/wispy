@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	//
 
 	styleInternal "github.com/kato-studio/wispy/atomicstyle/internal"
 	dt "github.com/kato-studio/wispy/utils/datatypes"
@@ -284,33 +285,13 @@ func WispyStyleGenerate(classes *dt.OrderedMap[string, struct{}], static_styles 
 }
 
 func WispyStyleCompile(input Styles) string {
-
 	// TODO: don't hardcode media queries if not needed
 	return fmt.Sprintf(`
-:root {
-	%[1]s
-}
-
-%[2]s 
-
-%[3]s
-
-@media (min-width: 640px) {
-	%[4]s
-}
-
-@media (min-width: 768px) {
-	%[5]s
-}
-
-@media (min-width: 1024px) {
-	%[6]s
-}
-
-@media (min-width: 1280px) {
-	%[7]s
-}
-	`,
+:root {%[1]s} %[2]s  %[3]s
+@media (min-width: 640px) {%[4]s}
+@media (min-width: 768px) {%[5]s}
+@media (min-width: 1024px) {%[6]s}
+@media (min-width: 1280px) {%[7]s}`,
 		MapToCssVariables(input.CssVariables),
 		// We need to ensure static classes are always at the top
 		strings.Join(input.Static.Keys(), "\n"),

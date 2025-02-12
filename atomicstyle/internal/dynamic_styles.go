@@ -171,33 +171,7 @@ var StyleCategories = map[string]StyleCategory{
 		},
 		Format: "border-top-right-radius: %[2]s; border-bottom-right-radius: %[2]s;",
 	},
-	"rounded-b": {
-		Options: map[string]string{
-			"none": "0", "sm": "0.125rem", "md": "0.375rem", "lg": "0.5rem", "full": "9999px",
-		},
-		Format: "border-bottom-right-radius: %[2]s; border-bottom-left-radius: %[2]s;",
-	},
-	"rounded-l": {
-		Options: map[string]string{
-			"none": "0", "sm": "0.125rem", "md": "0.375rem", "lg": "0.5rem", "full": "9999px",
-		},
-		Format: "border-bottom-left-radius: %[2]s; border-top-left-radius: %[2]s;",
-	},
-	"grid-cols": {
-		Attr:    "grid-template-columns",
-		Options: TWELVE,
-		Format:  "%[1]s: repeat(%[2]s, 1fr);",
-	},
-	"border": {
-		IsColor:   true,
-		Attr:      "border",
-		ColorAttr: "border-color",
-		Options:   INCREMENT,
-	},
-	"border-t": {
-		Attr:    "border-top",
-		Options: INCREMENT,
-	},
+
 	"border-b": {
 		Attr:    "border-bottom",
 		Options: INCREMENT,

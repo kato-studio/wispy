@@ -1,6 +1,8 @@
 package engine
 
-import "github.com/labstack/echo/v4"
+import (
+	"github.com/labstack/echo/v4"
+)
 
 // WispyConfig holds configuration options for the engine.
 type WispyConfig struct {
@@ -13,8 +15,6 @@ type WispyConfig struct {
 }
 
 // EngineCtx is the engine context which holds site mappings and configuration.
-
-// TODO: move to internal
 var Wispy = &WispyConfig{
 	SITE_DIR:           "sites",
 	PAGE_FILE_NAME:     "page",
@@ -24,24 +24,37 @@ var Wispy = &WispyConfig{
 	SHARED_DIR:       "shared",
 	SITE_CONFIG_NAME: "config.toml",
 }
-var Echo = echo.New()
-var Log = Echo.Logger
-var SiteMap = map[string]SiteStructure{}
+var Echo = echo.New()                    // GLOBAL
+var Log = Echo.Logger                    // GLOBAL
+var SiteMap = map[string]SiteStructure{} // GLOBAL
 
-// ------
-
-type RenderCtx struct {
-	Data map[string]interface{}
-	Site SiteStructure
-	Lang string
+// SiteStructure represents a single site, with its pages, layouts, and components.
+type SiteStructure struct {
+	Domain     string
+	Routes     map[string]PageRoutes
+	Layouts    map[string]string
+	Components map[string]string
+	// Add other fields as needed (e.g., site-specific config settings)
 }
 
-func NewRenderCtx(data map[string]interface{}, site SiteStructure) RenderCtx {
-	return RenderCtx{
-		Data: data,
-		Site: site,
-		Lang: "en",
-	}
+// PageRoutes holds information about a page.
+type PageRoutes struct {
+	Name     string
+	Title    string
+	Layout   string
+	Path     string
+	Template string
+	MetaTags MetaTags
+}
+
+// MetaTags holds metadata information for a page.
+type MetaTags struct {
+	Title         string
+	Description   string
+	OgTitle       string
+	OgDescription string
+	OgType        string
+	OgUrl         string
 }
 
 type ContentChange struct {
@@ -60,4 +73,20 @@ type SiteContent struct {
 	Author      string
 	LastUpdate  string
 	Changes     map[string]ContentChange
+}
+
+// ----------------------
+//
+//	CONSTS
+//
+// ----------------------
+var ESSENTIAL_SERVE = map[string]struct{}{
+	"about.txt":                  {},
+	"android-chrome-192x192.png": {},
+	"android-chrome-512x512.png": {},
+	"apple-touch-icon.png":       {},
+	"favicon-16x16.png":          {},
+	"favicon-32x32.png":          {},
+	"favicon.ico":                {},
+	"site.webmanifest":           {},
 }
