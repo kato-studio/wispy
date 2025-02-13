@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kato-studio/wispy/atomicstyle"
 	"github.com/kato-studio/wispy/engine"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -52,9 +51,9 @@ func setupTestServer() *echo.Echo {
 		var results = bytes.Buffer{}
 		results.WriteString(page)
 
-		classes := atomicstyle.RegexExtractClasses(page)
-		compiledCss := atomicstyle.WispyStyleGenerate(classes, atomicstyle.WispyStaticStyles, atomicstyle.WispyColors)
-		results.WriteString("<style>" + atomicstyle.WispyStyleCompile(compiledCss) + "</style>")
+		// classes := atomicstyle.RegexExtractClasses(page)
+		// compiledCss := atomicstyle.WispyStyleGenerate(classes, atomicstyle.WispyStaticStyles, atomicstyle.WispyColors)
+		// results.WriteString("<style>" + atomicstyle.WispyStyleCompile(compiledCss) + "</style>")
 
 		fmt.Println("Response generated successfully:", time.Since(startTime))
 		return c.HTMLBlob(http.StatusOK, results.Bytes())

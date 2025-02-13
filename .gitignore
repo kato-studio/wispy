@@ -13,6 +13,6 @@ logs
 
 # tests
 *.test.exe
-
+__debug_*.exe
 # other
 .DS_Store
