@@ -7,9 +7,11 @@ import (
 	"github.com/kato-studio/wispy/atomicstyle"
 )
 
-func TestServer(t *testing.T) {
+func TestBegin(t *testing.T) {
+	result := atomicstyle.Begin()
+	log.Printf("Generated CSS: \n%s", result)
 
-	var result = atomicstyle.Begin()
-
-	log.Printf("result \n %s", result)
+	if result == "" {
+		t.Errorf("Expected generated CSS, but got empty string")
+	}
 }

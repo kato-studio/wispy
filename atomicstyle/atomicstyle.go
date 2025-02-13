@@ -2,155 +2,166 @@ package atomicstyle
 
 import (
 	"bytes"
+	"fmt"
 	"io"
-	"log"
 	"os"
 	"sort"
 	"strings"
-	"sync"
+	"time"
 
 	"golang.org/x/net/html"
 )
 
-//
-// // use regex
-// func RegexExtractClasses(htmlContent string
-// func RegexExtractClasses(htmlContent string
-
-// func RegexExtractClasses(htmlContent string) *dt.OrderedMap[string, struct{}] {
-// 	classRegex := regexp.MustCompile(`class="([^"]+)"`)
-// 	matches := classRegex.FindAllStringSubmatch(htmlContent, -1)
-// 	classes := dt.NewOrderedMap[string, struct{}]()
-// 	for _, match := range matches {
-// 		for _, class_name := range strings.Split(match[1], " ") {
-// 			classes.Set(class_name, struct{}{})
-// 		}
-// 	}
-// 	return classes
-// }
-
-// func EscapeClassName(raw_class_name, state_string string) string {
-// 	var escaped_class_name = raw_class_name
-// 	var character_list = []string{":", ".", "]", "[", "/"}
-// 	for _, character := range character_list {
-// 		escaped_class_name = strings.ReplaceAll(escaped_class_name, character, "\\"+character)
-// 	}
-// 	return escaped_class_name + state_string
-// }
-
-// var CLASS_STATES = map[string]string{
-// 	"hover":    "hover",
-// 	"focus":    "focus",
-// 	"active":   "active",
-// 	"visited":  "visited",
-// 	"disabled": "disabled",
-// 	"first":    "first-child",
-// 	"last":     "last-child",
-// 	"odd":      "nth-child(odd)",
-// 	"even":     "nth-child(even)",
-// 	"after":    ":after",
-// 	"before":   ":before",
-// }
-
-type Cache map[string]string
-type Engine struct {
-	Cache *Cache
-}
-
-// UtilityGenerator defines a function that, given a class name,
-// returns a CSS rule (as a string) if the class is recognized.
-type UtilityGenerator func(className string) (cssRule string, ok bool)
-
-// registry holds all registered utility generators.
-var (
-	registryMu sync.RWMutex
-	registry   []UtilityGenerator
-)
-
-// RegisterUtility adds a new UtilityGenerator to the registry.
-func RegisterUtility(gen UtilityGenerator) {
-	registryMu.Lock()
-	defer registryMu.Unlock()
-	registry = append(registry, gen)
-}
-
-// GenerateCSSForClass iterates through the registry to see if any generator
-// produces a CSS rule for the given class name.
-func GenerateCSSForClass(className string) (string, bool) {
-	registryMu.RLock()
-	defer registryMu.RUnlock()
-	for _, gen := range registry {
-		if rule, ok := gen(className); ok {
-			return rule, true
+// ExtractClasses parses HTML from the reader and extracts unique class names.
+func ExtractClasses(r io.Reader) map[string]bool {
+	classes := make(map[string]bool)
+	tokenizer := html.NewTokenizer(r)
+	for {
+		tokenType := tokenizer.Next()
+		if tokenType == html.ErrorToken {
+			break
 		}
-	}
-	return "", false
-}
-
-// ExtractClassesFromHTML parses the HTML from r and returns a set of unique class names.
-func ExtractClassesFromHTML(r io.Reader) (map[string]struct{}, error) {
-	doc, err := html.Parse(r)
-	if err != nil {
-		return nil, err
-	}
-	classes := make(map[string]struct{})
-	var f func(*html.Node)
-	f = func(n *html.Node) {
-		if n.Type == html.ElementNode {
-			for _, attr := range n.Attr {
+		token := tokenizer.Token()
+		// Check for start or self-closing tags.
+		if token.Type == html.StartTagToken || token.Type == html.SelfClosingTagToken {
+			for _, attr := range token.Attr {
 				if attr.Key == "class" {
-					for _, c := range strings.Fields(attr.Val) {
-						classes[c] = struct{}{}
+					// Split classes by whitespace.
+					for _, className := range strings.Fields(attr.Val) {
+						classes[className] = true
 					}
 				}
 			}
 		}
-		for child := n.FirstChild; child != nil; child = child.NextSibling {
-			f(child)
-		}
 	}
-	f(doc)
-	return classes, nil
+
+	return classes
 }
 
-// GenerateCSSFromClasses iterates over the unique class names and, using the registry,
-// builds the complete CSS output.
-func GenerateCSSFromClasses(classes map[string]struct{}) string {
-	var buf bytes.Buffer
-	// Sort class names for consistent output.
-	keys := make([]string, 0, len(classes))
-	for k := range classes {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, className := range keys {
-		if rule, ok := GenerateCSSForClass(className); ok {
-			buf.WriteString(rule)
-			buf.WriteString("\n")
-		}
-	}
-	return buf.String()
+// --- Prefix Mappings ---
+
+var mediaQueryPrefixes = map[string]string{
+	"sm":  "(min-width: 640px)",
+	"md":  "(min-width: 768px)",
+	"lg":  "(min-width: 1024px)",
+	"xl":  "(min-width: 1280px)",
+	"2xl": "(min-width: 1536px)",
 }
 
-// init registers the default utility generators.
-func init() {
-	RegisterUtility(bgUtility)
-	RegisterUtility(textUtility)
-	RegisterUtility(mUtility)
-	RegisterUtility(pUtility)
+var statePseudoPrefixes = map[string]string{
+	"hover":  ":hover",
+	"focus":  ":focus",
+	"active": ":active",
+	// Extend with additional state prefixes if needed.
+}
+
+// --- CSS Generation ---
+
+// GenerateCSS accepts a set of class names and the trie, returning generated CSS.
+func GenerateCSS(classes map[string]bool, trie *Trie) string {
+	var buffer bytes.Buffer
+	var rules []string
+
+	for className := range classes {
+		if rule, ok := generateRuleForClass(className, trie); ok {
+			rules = append(rules, rule)
+		}
+	}
+
+	sort.Strings(rules)
+	for _, rule := range rules {
+		buffer.WriteString(rule + "\n")
+	}
+
+	return buffer.String()
+}
+
+// GenerateDynamicCSS processes classes with dynamic values (currently supports w-[...] and h-[...])
+func GenerateDynamicCSS(class string) (string, bool) {
+	// Split the class on colon to separate any prefixes (e.g. media, state)
+	parts := strings.Split(class, ":")
+	base := parts[len(parts)-1]
+	prefixes := parts[:len(parts)-1]
+
+	// Example: handle dynamic width: "w-[500px]"
+	if strings.HasPrefix(base, "w-[") && strings.HasSuffix(base, "]") {
+		value := base[len("w-[") : len(base)-1]
+		ruleBody := fmt.Sprintf("width: %s;", value)
+		selector := buildSelector(class, prefixes)
+		return wrapWithMediaQuery(selector, ruleBody, prefixes), true
+	}
+	// Example: handle dynamic height: "h-[500px]"
+	if strings.HasPrefix(base, "h-[") && strings.HasSuffix(base, "]") {
+		value := base[len("h-[") : len(base)-1]
+		ruleBody := fmt.Sprintf("height: %s;", value)
+		selector := buildSelector(class, prefixes)
+		return wrapWithMediaQuery(selector, ruleBody, prefixes), true
+	}
+	// Add additional dynamic utilities as needed.
+	return "", false
+}
+
+// generateRuleForClass checks the static trie first and then attempts dynamic generation.
+func generateRuleForClass(class string, trie *Trie) (string, bool) {
+	if rule, ok := trie.Search(class); ok {
+		return "." + escapeClass(class) + " { " + rule + " }", true
+	}
+	// Fallback to dynamic generation (if supported)
+	if dynRule, ok := GenerateDynamicCSS(class); ok {
+		return dynRule, true
+	}
+	return "", false
+}
+
+// buildSelector constructs the CSS selector including state pseudo-classes.
+func buildSelector(originalClass string, prefixes []string) string {
+	// Use the full original class (with prefixes) for a unique selector and escape special characters.
+	selector := "." + escapeClass(originalClass)
+	// Append pseudo-classes for state prefixes (ignore media prefixes)
+	for _, p := range prefixes {
+		if pseudo, ok := statePseudoPrefixes[p]; ok {
+			selector += pseudo
+		}
+	}
+	return selector
+}
+
+// wrapWithMediaQuery wraps the rule in a media query if a media prefix is present.
+func wrapWithMediaQuery(selector, ruleBody string, prefixes []string) string {
+	for _, p := range prefixes {
+		if mq, ok := mediaQueryPrefixes[p]; ok {
+			innerRule := selector + " { " + ruleBody + " }"
+			return fmt.Sprintf("@media %s { %s }", mq, innerRule)
+		}
+	}
+	return selector + " { " + ruleBody + " }"
+}
+
+// escapeClass escapes special characters (such as colon and square brackets) in class names.
+func escapeClass(class string) string {
+	s := strings.ReplaceAll(class, ":", "\\:")
+	s = strings.ReplaceAll(s, "[", "\\[")
+	s = strings.ReplaceAll(s, "]", "\\]")
+	return s
 }
 
 func Begin() string {
+	trie := BuildExtendedTrie()
 	input, _ := os.Open("./example.html")
+	defer input.Close()
 
+	fmt.Println("Execution Times")
+	fmt.Println("------------------")
+	extractTime := time.Now()
 	// Extract unique class names from the HTML.
-	classes, err := ExtractClassesFromHTML(input)
-	if err != nil {
-		log.Fatalf("Error parsing HTML: %v", err)
-	}
+	classes := ExtractClasses(input)
+	fmt.Println("Extract: ", time.Since(extractTime))
 
+	generationTime := time.Now()
 	// Generate CSS rules for the extracted classes.
-	cssOutput := GenerateCSSFromClasses(classes)
+	cssOutput := GenerateCSS(classes, trie)
+	fmt.Println("Generate: ", time.Since(generationTime))
+	fmt.Println("------------------")
 
 	// Output the generated CSS.
 	// fmt.Println(cssOutput)
