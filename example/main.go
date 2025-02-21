@@ -44,6 +44,7 @@ func main() {
 	// app.Use(middleware.BodyLimit("2M"))
 	// Routes
 
+	trie := atomicstyle.BuildFullTrie()
 	engine.Echo.GET("*", func(c echo.Context) error {
 		domain := c.Request().Host
 		requestPath := c.Request().URL.Path
@@ -72,21 +73,29 @@ func main() {
 			return err
 		}
 
-		var results = bytes.Buffer{}
-		results.WriteString(page)
-
 		fmt.Println("----------")
 		fmt.Println("[] Render Time", time.Since(startTime))
 
-		classes := atomicstyle.RegexExtractClasses(page)
-		compiledCss := atomicstyle.WispyStyleGenerate(classes, atomicstyle.WispyStaticStyles, atomicstyle.WispyColors)
+		var results = bytes.Buffer{}
+		results.WriteString(page)
+
 		styleTime := time.Now()
-		results.WriteString("<style>")
-		results.WriteString(atomicstyle.WispyStyleCompile(compiledCss))
-		results.WriteString("</style>")
+		reader := bytes.NewReader([]byte(page))
+		fmt.Println("[] Style Setup Time", time.Since(styleTime))
+
+		styleExtTime := time.Now()
+		classes := atomicstyle.ExtractClasses(reader)
+		fmt.Println("[] Style Ext Time", time.Since(styleExtTime))
+		//
+		styleGenTime := time.Now()
+		css := atomicstyle.GenerateCSS(classes, trie)
+		fmt.Println("[] Style Gen Time", time.Since(styleGenTime))
+		//
 		fmt.Println("[] Style Time", time.Since(styleTime))
 		fmt.Println("[] Total Time", time.Since(startTime))
 		fmt.Println("----------")
+		results.WriteString("<style>" + css + "</style>")
+		results.Write(results.Bytes())
 
 		// return c.Render(http.StatusOK, templateName, data)
 		return c.HTMLBlob(http.StatusOK, results.Bytes())

@@ -1,48 +1,167 @@
+// here is my golang definitions file that is referenced to generate a trie of class names and their css properties, let's make small changes to use css variables that exist in the theme where it makes sense to do so ```
 package atomicstyle
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // --- Data Definitions ---
-
 var (
-	// Sample color names (expand as needed)
-	colorNames = []string{"red", "blue", "green", "black", "white", "gray", "indigo", "purple", "pink"}
-
-	// Common numeric scales
-	opacityValues = []string{"0", "5", "10", "20", "25", "30", "40", "50", "60", "70", "75", "80", "90", "95", "100"}
-	borderWidths  = []string{"0", "2", "4", "8"}
-	roundedSizes  = []string{"none", "sm", "md", "lg", "xl", "2xl", "3xl", "full"}
-	borderStyles  = []string{"solid", "dashed", "dotted", "double", "none"}
-	// For divide, we reuse borderWidths for the numeric ones.
-	ringWidths  = []string{"0", "1", "2", "4", "8"}
-	ringOffsets = []string{"0", "1", "2", "4", "8"}
-
-	// Spacing scale (from our previous definition)
-	spacingScale = map[string]string{
-		"0":  "0",
-		"1":  "0.25rem",
-		"2":  "0.5rem",
-		"3":  "0.75rem",
-		"4":  "1rem",
-		"5":  "1.25rem",
-		"6":  "1.5rem",
-		"8":  "2rem",
-		"10": "2.5rem",
-		"12": "3rem",
-		"16": "4rem",
-		"20": "5rem",
-		"24": "6rem",
-		"32": "8rem",
-		"40": "10rem",
-		"48": "12rem",
-		"56": "14rem",
-		"64": "16rem",
-		"px": "1px",
+	colorNames = []string{
+		// Tailwind default colors compat
+		"slate", "gray", "zinc", "neutral", "stone",
+		"red", "orange", "amber", "yellow", "lime",
+		"green", "emerald", "teal", "cyan", "sky",
+		"blue", "indigo", "violet", "purple", "fuchsia",
+		"pink", "rose",
+		// brand/project colors
+		"primary", "accent", "white", "black",
 	}
+	opacityValues = []string{
+		"", "0", "5", "10", "20", "25", "30", "40", "50", "60", "70", "75", "80", "90", "95", "100",
+	}
+	shades = []string{
+		"50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950",
+	}
+	borderWidths = map[string]string{
+		"px": "1",
+		"1":  "1",
+		"2":  "2",
+		"3":  "3",
+		"4":  "4",
+		"5":  "5",
+		"8":  "8",
+	}
+	borderStyles = []string{
+		"solid", "dashed", "dotted", "double", "none",
+	}
+	// spacingScale = []string{
+	// 	"1", "2", "3", "4", "5", "6", "7", "8", "10", "12", "16", "20", "22", "24", "32", "40", "44", "48", "56", "64", "72",
+	// }
+	transformations = map[string]string{
+		"uppercase":   "uppercase",
+		"lowercase":   "lowercase",
+		"capitalize":  "capitalize",
+		"normal-case": "none",
+	}
+	decorations = map[string]string{
+		"underline":    "underline",
+		"line-through": "line-through",
+		"no-underline": "none",
+	}
+	sizingValues = map[string]string{
+		"px":       "1px",
+		"auto":     "auto",
+		"full":     "100%",
+		"screen":   "100vw",
+		"screen-w": "100vw",
+		"screen-h": "100vh",
+		"min":      "min-content",
+		"max":      "max-content",
+		"fit":      "fit-content",
+	}
+	containerBreakpoints = []string{
+		"3xs", "2xs", "xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl",
+	}
+	textSizes = []string{
+		"xs", "sm", "base", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "8xl", "9xl",
+	}
+	roundedSizes = []string{
+		"none", "sm", "md", "lg", "xl", "2xl", "3xl", "full",
+	}
+	displayValues = map[string]string{
+		"block":        "block",
+		"inline":       "inline",
+		"inline-block": "inline-block",
+		"flex":         "flex",
+		"inline-flex":  "inline-flex",
+		"grid":         "grid",
+		"inline-grid":  "inline-grid",
+		"hidden":       "none",
+	}
+	clearValues = []string{
+		"left", "right", "both", "none",
+	}
+	objectFitValues = map[string]string{
+		"contain":    "contain;",
+		"cover":      "cover;",
+		"fill":       "fill;",
+		"none":       "none;",
+		"scale-down": "scale-down;",
+	}
+	translateValues = []string{"0", "1", "2", "3", "4", "5", "6", "8", "10", "12", "16", "20", "24", "32", "40", "48", "56", "64", "px", "full", "1/2", "1/3", "2/3", "1/4", "2/4", "3/4"}
+	boxShadowSizes  = []string{"2xs", "xs", "sm", "md", "lg", "xl", "2xl", "inner", "none"}
+	mixBlendModes   = []string{"normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"}
+	objectPosValues = map[string]string{
+		"bottom":       "bottom",
+		"center":       "center",
+		"left":         "left",
+		"left-bottom":  "left bottom",
+		"left-top":     "left top",
+		"right":        "right",
+		"right-bottom": "right bottom",
+		"right-top":    "right top",
+		"top":          "top",
+	}
+	overflowValues = map[string]string{
+		"auto":    "auto",
+		"hidden":  "hidden",
+		"visible": "visible",
+		"scroll":  "scroll",
+		"clip":    "clip",
+	}
+	blurValues = []string{"none", "sm", "md", "lg", "xl", "2xl", "3xl"}
+	flexDirs   = map[string]string{
+		"row":         "row",
+		"row-reverse": "row-reverse",
+		"col":         "column",
+		"col-reverse": "column-reverse",
+	}
+	flexWraps = map[string]string{
+		"wrap":         "wrap",
+		"wrap-reverse": "wrap-reverse",
+		"nowrap":       "nowrap;",
+	}
+	alignValues = map[string]string{
+		"start":    "flex-start",
+		"end":      "flex-end",
+		"center":   "center",
+		"baseline": "baseline",
+		"stretch":  "stretch",
+	}
+	flexShort = map[string]string{
+		"1":       "1 1 0%;",
+		"auto":    "1 1 auto;",
+		"initial": "0 1 auto;",
+		"none":    "none;",
+	}
+	fontWeights = map[string]string{
+		"thin":       "100",
+		"extralight": "200",
+		"light":      "300",
+		"normal":     "400",
+		"medium":     "500",
+		"semibold":   "600",
+		"bold":       "700",
+		"extrabold":  "800",
+		"black":      "900",
+	}
+	// Letter Spacing (Tracking)
+	tracking = []string{
+		"tighter", "tight", "normal", "wide", "wider", "widest",
+	}
+	// Line height (Leading)
+	lineHeights = []string{
+		"tight", "snug", "normal", "relaxed", "loose", "loose",
+	}
+	positions   = []string{"static", "fixed", "absolute", "relative", "sticky"}
+	insetValues = []string{"0", "auto"}
+	axes        = []string{"x", "y"}
+	gapValues   = []string{"0", "1", "2", "3", "4", "5", "6", "8", "10", "12", "16", "20", "24", "32", "40", "48", "56", "64", "px"}
 )
 
 // BuildExtendedTrie builds a trie preloaded with all of our utility CSS classes.
-func BuildExtendedTrie() *Trie {
+func BuildFullTrie() *Trie {
 	trie := NewTrie()
 
 	addLayout(trie)
@@ -51,8 +170,9 @@ func BuildExtendedTrie() *Trie {
 	addSizing(trie)
 	addTypography(trie)
 	addBackgrounds(trie)
-
 	addBorders(trie)
+	addRingUtils(trie)
+	addDivideUtils(trie)
 	addEffects(trie)
 	addFilters(trie)
 	addTables(trie)
@@ -61,6 +181,14 @@ func BuildExtendedTrie() *Trie {
 	addInteractivity(trie)
 	addSVG(trie)
 	addAccessibility(trie)
+	addAspectRatio(trie)
+	addScrollSnap(trie)
+	addGridAutoFlow(trie)
+	addGridUtilities(trie)
+	addColumns(trie)
+	addPlaceholderStyling(trie)
+	addAdvancedUtilities(trie)
+	addContainers(trie)
 
 	return trie
 }
@@ -68,78 +196,58 @@ func BuildExtendedTrie() *Trie {
 // --- Layout Utilities ---
 func addLayout(trie *Trie) {
 	// Container and box-sizing
-	trie.Insert("container", "width: 100%; margin-left: auto; margin-right: auto; padding: 1rem;")
+	// trie.Insert("container", "width: 100%; margin-left: auto; margin-right: auto; padding: 1rem;")
 	trie.Insert("box-border", "box-sizing: border-box;")
 	trie.Insert("box-content", "box-sizing: content-box;")
-
-	// Display utilities (block, inline, inline-block, flex, inline-flex, grid, inline-grid, hidden)
-	displayValues := map[string]string{
-		"block":        "display: block;",
-		"inline":       "display: inline;",
-		"inline-block": "display: inline-block;",
-		"flex":         "display: flex;",
-		"inline-flex":  "display: inline-flex;",
-		"grid":         "display: grid;",
-		"inline-grid":  "display: inline-grid;",
-		"hidden":       "display: none;",
+	//
+	// Add general overflow utilities
+	for name, value := range overflowValues {
+		trie.Insert("overflow-"+name, "overflow: "+value+";")
 	}
+	// Add overflow utilities for X and Y axes
+	for name, value := range overflowValues {
+		trie.Insert("overflow-x-"+name, "overflow-x: "+value+";")
+		trie.Insert("overflow-y-"+name, "overflow-y: "+value+";")
+	}
+	//
 	for k, rule := range displayValues {
-		trie.Insert("display-"+k, rule)
+		trie.Insert(k, "display: "+rule+";")
 	}
-
 	// Float and clear
 	for _, dir := range []string{"right", "left", "none"} {
 		trie.Insert("float-"+dir, "float: "+dir+";")
 	}
-	clearValues := []string{"left", "right", "both", "none"}
 	for _, v := range clearValues {
 		trie.Insert("clear-"+v, "clear: "+v+";")
 	}
-
-	// Object fit and position
-	objectFitValues := map[string]string{
-		"contain":    "object-fit: contain;",
-		"cover":      "object-fit: cover;",
-		"fill":       "object-fit: fill;",
-		"none":       "object-fit: none;",
-		"scale-down": "object-fit: scale-down;",
-	}
 	for k, rule := range objectFitValues {
-		trie.Insert("object-"+k, rule)
-	}
-	objectPosValues := map[string]string{
-		"bottom":       "object-position: bottom;",
-		"center":       "object-position: center;",
-		"left":         "object-position: left;",
-		"left-bottom":  "object-position: left bottom;",
-		"left-top":     "object-position: left top;",
-		"right":        "object-position: right;",
-		"right-bottom": "object-position: right bottom;",
-		"right-top":    "object-position: right top;",
-		"top":          "object-position: top;",
+		trie.Insert("object-"+k, "object-fit: "+rule+";")
 	}
 	for k, rule := range objectPosValues {
-		trie.Insert("object-"+k, rule)
+		trie.Insert("object-"+k, "object-position: "+rule+";")
 	}
-
 	// Positioning utilities
-	positions := []string{"static", "fixed", "absolute", "relative", "sticky"}
 	for _, pos := range positions {
 		trie.Insert(pos, "position: "+pos+";")
 	}
-
 	// Inset, top/right/bottom/left
-	insetValues := []string{"0", "auto"}
 	for _, val := range insetValues {
 		trie.Insert("inset-"+val, fmt.Sprintf("top: %s; right: %s; bottom: %s; left: %s;", val, val, val, val))
 		trie.Insert("inset-x-"+val, fmt.Sprintf("left: %s; right: %s;", val, val))
 		trie.Insert("inset-y-"+val, fmt.Sprintf("top: %s; bottom: %s;", val, val))
-		trie.Insert("top-"+val, "top: "+val+";")
-		trie.Insert("right-"+val, "right: "+val+";")
-		trie.Insert("bottom-"+val, "bottom: "+val+";")
-		trie.Insert("left-"+val, "left: "+val+";")
 	}
-
+	// absolute positioning
+	// for _, val := range spacingScale {
+	// 	trie.Insert("top-"+val, "top: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("right-"+val, "right: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("bottom-"+val, "bottom: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("left-"+val, "left: "+toCalcVar(val, val, "")+";")
+	// 	//
+	// 	trie.Insert("-top-"+val, "top: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-right-"+val, "right: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-bottom-"+val, "bottom: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-left-"+val, "left: -"+toCalcVar(val, val, "")+";")
+	// }
 	// Visibility and z-index
 	trie.Insert("visible", "visibility: visible;")
 	trie.Insert("invisible", "visibility: hidden;")
@@ -147,58 +255,34 @@ func addLayout(trie *Trie) {
 		trie.Insert("z-"+z, "z-index: "+z+";")
 	}
 }
+func addContainers(trie *Trie) {
+	// Dynamic containers child-width utilities with CSS variables for flexibility
+	// TODO:
+}
 
 // --- Flexbox and Grid Utilities ---
 func addFlexGrid(trie *Trie) {
 	// Flex direction and wrap
-	flexDirs := map[string]string{
-		"row":         "flex-direction: row;",
-		"row-reverse": "flex-direction: row-reverse;",
-		"col":         "flex-direction: column;",
-		"col-reverse": "flex-direction: column-reverse;",
-	}
 	for k, rule := range flexDirs {
-		trie.Insert("flex-"+k, rule)
-	}
-	flexWraps := map[string]string{
-		"wrap":         "flex-wrap: wrap;",
-		"wrap-reverse": "flex-wrap: wrap-reverse;",
-		"nowrap":       "flex-wrap: nowrap;",
+		trie.Insert("flex-"+k, "flex-direction: "+rule)
 	}
 	for k, rule := range flexWraps {
-		trie.Insert("flex-"+k, rule)
+		trie.Insert("flex-"+k, "flex-wrap: "+rule)
 	}
-
 	// Alignment and justify utilities
-	alignValues := map[string]string{
-		"start":    "flex-start",
-		"end":      "flex-end",
-		"center":   "center",
-		"baseline": "baseline",
-		"stretch":  "stretch",
-	}
 	for k, v := range alignValues {
 		trie.Insert("items-"+k, "align-items: "+v+";")
 		trie.Insert("content-"+k, "align-content: "+v+";")
 		trie.Insert("self-"+k, "align-self: "+v+";")
 		trie.Insert("justify-"+k, "justify-content: "+v+";")
 	}
-
-	// Flex shorthand and grow/shrink
-	flexShort := map[string]string{
-		"1":       "flex: 1 1 0%;",
-		"auto":    "flex: 1 1 auto;",
-		"initial": "flex: 0 1 auto;",
-		"none":    "flex: none;",
-	}
 	for k, rule := range flexShort {
-		trie.Insert("flex-"+k, rule)
+		trie.Insert("flex-"+k, "flex: "+rule)
 	}
 	trie.Insert("grow", "flex-grow: 1;")
 	trie.Insert("grow-0", "flex-grow: 0;")
 	trie.Insert("shrink", "flex-shrink: 1;")
 	trie.Insert("shrink-0", "flex-shrink: 0;")
-
 	// Order utilities
 	trie.Insert("order-first", "order: -9999;")
 	trie.Insert("order-last", "order: 9999;")
@@ -207,27 +291,20 @@ func addFlexGrid(trie *Trie) {
 		order := itoa(i)
 		trie.Insert("order-"+order, "order: "+order+";")
 	}
-
 	// Grid columns/rows and gap
-	for i := 1; i <= 12; i++ {
-		colClass := "grid-cols-" + itoa(i)
-		trie.Insert(colClass, fmt.Sprintf("grid-template-columns: repeat(%d, minmax(0, 1fr));", i))
-		trie.Insert("col-start-"+itoa(i), "grid-column-start: "+itoa(i)+";")
-		trie.Insert("col-end-"+itoa(i), "grid-column-end: "+itoa(i)+";")
-	}
-	for i := 1; i <= 6; i++ {
-		rowClass := "grid-rows-" + itoa(i)
-		trie.Insert(rowClass, fmt.Sprintf("grid-template-rows: repeat(%d, minmax(0, 1fr));", i))
-		trie.Insert("row-start-"+itoa(i), "grid-row-start: "+itoa(i)+";")
-		trie.Insert("row-end-"+itoa(i), "grid-row-end: "+itoa(i)+";")
-	}
-	axes := []string{"x", "y"}
-	gapValues := []string{"0", "1", "2", "3", "4", "5", "6", "8", "10", "12", "16", "20", "24", "32", "40", "48", "56", "64", "px"}
-	for _, axis := range axes {
-		for _, val := range gapValues {
-			trie.Insert("gap-"+axis+"-"+val, "gap-"+axis+": "+val+";")
-		}
-	}
+	// for i := 1; i <= 12; i++ {
+	// 	colClass := "grid-cols-" + itoa(i)
+	// 	trie.Insert(colClass, fmt.Sprintf("grid-template-columns: repeat(%d, minmax(0, 1fr));", i))
+	// 	trie.Insert("col-start-"+itoa(i), "grid-column-start: "+itoa(i)+";")
+	// 	trie.Insert("col-end-"+itoa(i), "grid-column-end: "+itoa(i)+";")
+	// }
+	// for i := 1; i <= 6; i++ {
+	// 	rowClass := "grid-rows-" + itoa(i)
+	// 	trie.Insert(rowClass, fmt.Sprintf("grid-template-rows: repeat(%d, minmax(0, 1fr));", i))
+	// 	trie.Insert("row-start-"+itoa(i), "grid-row-start: "+itoa(i)+";")
+	// 	trie.Insert("row-end-"+itoa(i), "grid-row-end: "+itoa(i)+";")
+	// }
+
 	// Justify-items/self and place-* utilities (sample)
 	trie.Insert("justify-items-center", "justify-items: center;")
 	trie.Insert("place-content-center", "place-content: center;")
@@ -235,35 +312,144 @@ func addFlexGrid(trie *Trie) {
 	trie.Insert("place-self-center", "place-self: center;")
 }
 
-// --- Spacing Utilities ---
-func addSpacing(trie *Trie) {
-	for k, val := range spacingScale {
-		trie.Insert("p-"+k, "padding: "+val+";")
-		trie.Insert("px-"+k, "padding-left: "+val+"; padding-right: "+val+";")
-		trie.Insert("py-"+k, "padding-top: "+val+"; padding-bottom: "+val+";")
-		trie.Insert("m-"+k, "margin: "+val+";")
-		trie.Insert("mx-"+k, "margin-left: "+val+"; margin-right: "+val+";")
-		trie.Insert("my-"+k, "margin-top: "+val+"; margin-bottom: "+val+";")
+func addGridUtilities(trie *Trie) {
+	// Grid columns, rows, and gaps
+	// for i := 1; i <= 12; i++ {
+	// 	trie.Insert(fmt.Sprintf("grid-cols-%d", i), fmt.Sprintf("grid-template-columns: repeat(%d, minmax(0, 1fr));", i))
+	// 	trie.Insert(fmt.Sprintf("grid-rows-%d", i), fmt.Sprintf("grid-template-rows: repeat(%d, minmax(0, 1fr));", i))
+	// 	trie.Insert(fmt.Sprintf("col-start-%d", i), fmt.Sprintf("grid-column-start: %d;", i))
+	// 	trie.Insert(fmt.Sprintf("col-end-%d", i), fmt.Sprintf("grid-column-end: %d;", i))
+	// 	trie.Insert(fmt.Sprintf("row-start-%d", i), fmt.Sprintf("grid-row-start: %d;", i))
+	// 	trie.Insert(fmt.Sprintf("row-end-%d", i), fmt.Sprintf("grid-row-end: %d;", i))
+
+	// 	// Negative values for row-start and row-end
+	// 	trie.Insert(fmt.Sprintf("-row-start-%d", i), fmt.Sprintf("grid-row-start: calc(%d * -1);", i))
+	// 	trie.Insert(fmt.Sprintf("-row-end-%d", i), fmt.Sprintf("grid-row-end: calc(%d * -1);", i))
+
+	// 	// Row span utilities
+	// 	trie.Insert(fmt.Sprintf("row-span-%d", i), fmt.Sprintf("grid-row: span %d / span %d;", i, i))
+	// }
+
+	// Special values
+	trie.Insert("row-span-full", "grid-row: 1 / -1;")
+	trie.Insert("row-auto", "grid-row: auto;")
+	trie.Insert("row-start-auto", "grid-row-start: auto;")
+	trie.Insert("row-end-auto", "grid-row-end: auto;")
+}
+
+// --- Grid Auto Flow & Auto Columns/Rows ---
+func addGridAutoFlow(trie *Trie) {
+	trie.Insert("grid-flow-row", "grid-auto-flow: row;")
+	trie.Insert("grid-flow-col", "grid-auto-flow: column;")
+	trie.Insert("grid-flow-row-dense", "grid-auto-flow: row dense;")
+	trie.Insert("grid-flow-col-dense", "grid-auto-flow: column dense;")
+	trie.Insert("auto-cols-auto", "grid-auto-columns: auto;")
+	trie.Insert("auto-cols-min", "grid-auto-columns: min-content;")
+	trie.Insert("auto-cols-max", "grid-auto-columns: max-content;")
+	trie.Insert("auto-cols-fr", "grid-auto-columns: minmax(0, 1fr);")
+	trie.Insert("auto-rows-auto", "grid-auto-rows: auto;")
+	trie.Insert("auto-rows-min", "grid-auto-rows: min-content;")
+	trie.Insert("auto-rows-max", "grid-auto-rows: max-content;")
+	trie.Insert("auto-rows-fr", "grid-auto-rows: minmax(0, 1fr);")
+}
+
+// --- Columns Utilities ---
+func addColumns(trie *Trie) {
+	for i := 1; i <= 6; i++ {
+		trie.Insert(fmt.Sprintf("columns-%d", i), fmt.Sprintf("columns: %d;", i))
 	}
-	// For space between siblings (note: actual implementation would need complex selectors)
-	trie.Insert("space-x-4", ">* + * { margin-left: 1rem; }")
-	trie.Insert("space-y-4", ">* + * { margin-top: 1rem; }")
+}
+
+func addSpacing(trie *Trie) {
+	// Auto margins
+	trie.Insert("mx-auto", "margin-inline: auto;")
+	// Standard spacing (positive margins & paddings)
+	// for _, val := range spacingScale {
+	// Padding utilities
+	// trie.Insert("p-"+val, "padding: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("px-"+val, "padding-inline: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("py-"+val, "padding-block: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("pt-"+val, "padding-top: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("pr-"+val, "padding-right: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("pb-"+val, "padding-bottom: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("pl-"+val, "padding-left: "+toCalcVar(val, val, "")+";")
+
+	// Margin utilities
+	// trie.Insert("m-"+val, "margin: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("mx-"+val, "margin-inline: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("my-"+val, "margin-block: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("mt-"+val, "margin-top: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("mr-"+val, "margin-right: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("mb-"+val, "margin-bottom: "+toCalcVar(val, val, "")+";")
+	// trie.Insert("ml-"+val, "margin-left: "+toCalcVar(val, val, "")+";")
+
+	// Negative margins (only for non-zero values)
+	// if val != "0" {
+	// 	trie.Insert("-m-"+val, "margin: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-mx-"+val, "margin-inline: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-my-"+val, "margin-block: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-mt-"+val, "margin-top: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-mr-"+val, "margin-right: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-mb-"+val, "margin-bottom: -"+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("-ml-"+val, "margin-left: -"+toCalcVar(val, val, "")+";")
+	// }
+	// }
+	// Support `space-x-reverse` and `space-y-reverse` (for RTL handling)
+	trie.Insert("space-x-reverse", "direction: rtl;")
+	trie.Insert("space-y-reverse", "direction: rtl;")
 }
 
 // --- Sizing Utilities ---
 func addSizing(trie *Trie) {
-	wValues := []string{"0", "1", "2", "3", "4", "5", "6", "8", "10", "12", "16", "20", "24", "32", "40", "48", "56", "64", "auto", "px", "full", "screen", "min", "max", "fit"}
-	for _, v := range wValues {
-		trie.Insert("w-"+v, "width: "+v+";")
-		trie.Insert("h-"+v, "height: "+v+";")
+	// Sizing using increments
+	// for k, val := range sizingValues {
+	// 	trie.Insert("w-"+k, "width: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("h-"+k, "height: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("size-"+k, "height: "+toCalcVar(val, val, "")+"; "+"width: "+toCalcVar(val, val, "")+";")
+	// 	//
+	// 	trie.Insert("min-w-"+k, "min-width: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("max-w-"+k, "max-width: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("min-h-"+k, "min-height: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("max-h-"+k, "max-height: "+toCalcVar(val, val, "")+";")
+	// 	//
+	// 	trie.Insert("min-w-"+k, "min-width: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("max-w-"+k, "max-width: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("min-h-"+k, "min-height: "+toCalcVar(val, val, "")+";")
+	// 	trie.Insert("max-h-"+k, "max-height: "+toCalcVar(val, val, "")+";")
+	// }
+	// Sizing
+	for k, val := range sizingValues {
+		trie.Insert("w-"+k, "width: "+val+";")
+		trie.Insert("h-"+k, "height: "+val+";")
+		trie.Insert("size-"+k, "height: "+val+"; "+"width: "+val+";")
+		//
+		trie.Insert("min-w-"+k, "min-width: "+val+";")
+		trie.Insert("max-w-"+k, "max-width: "+val+";")
+		trie.Insert("min-h-"+k, "min-height: "+val+";")
+		trie.Insert("max-h-"+k, "max-height: "+val+";")
+		//
+		trie.Insert("min-w-"+k, "min-width: "+val+";")
+		trie.Insert("max-w-"+k, "max-width: "+val+";")
+		trie.Insert("min-h-"+k, "min-height: "+val+";")
+		trie.Insert("max-h-"+k, "max-height: "+val+";")
 	}
-	// Similarly for min-w, max-w, min-h, max-h (simplified)
-	for _, v := range []string{"0", "full", "min", "max", "fit"} {
-		trie.Insert("min-w-"+v, "min-width: "+v+";")
-		trie.Insert("max-w-"+v, "max-width: "+v+";")
-		trie.Insert("min-h-"+v, "min-height: "+v+";")
-		trie.Insert("max-h-"+v, "max-height: "+v+";")
+
+	for _, val := range containerBreakpoints {
+		trie.Insert("w-"+val, "width: var(--container-"+val+");")
+		trie.Insert("h-"+val, "height: var(--container-"+val+");")
+		trie.Insert("size-"+val, "height: var(--container-"+val+"); "+"width: var(--container-"+val+");")
+		//
+		trie.Insert("min-w-"+val, "min-width: var(--container-"+val+");")
+		trie.Insert("max-w-"+val, "max-width: var(--container-"+val+");")
+		trie.Insert("min-h-"+val, "min-height: var(--container-"+val+");")
+		trie.Insert("max-h-"+val, "max-height: var(--container-"+val+");")
+		//
+		trie.Insert("min-w-"+val, "min-width: var(--container-"+val+");")
+		trie.Insert("max-w-"+val, "max-width: var(--container-"+val+");")
+		trie.Insert("min-h-"+val, "min-height: var(--container-"+val+");")
+		trie.Insert("max-h-"+val, "max-height: var(--container-"+val+");")
 	}
+
 }
 
 // --- Typography Utilities ---
@@ -272,38 +458,47 @@ func addTypography(trie *Trie) {
 	for _, f := range []string{"sans", "serif", "mono"} {
 		trie.Insert("font-"+f, "font-family: "+f+";")
 	}
-	// Text sizes
-	for _, s := range []string{"xs", "sm", "base", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "8xl", "9xl"} {
-		trie.Insert("text-"+s, "font-size: "+s+";")
+	for _, val := range textSizes {
+		trie.Insert("text-"+val, "font-size: var(--text-"+val+"); line-height: var(--leading, var(--text-"+val+"--line-height));")
 	}
-	// Font weights
-	for _, w := range []string{"thin", "extralight", "light", "normal", "medium", "semibold", "bold", "extrabold", "black"} {
-		trie.Insert("font-"+w, "font-weight: "+w+";")
+	// Text colors
+	// for _, opacity := range opacityValues {
+	for _, color := range colorNames {
+		class := "text-" + color
+		trie.Insert(class, "color: var(--color-"+color+"-500);")
+		for _, shade := range shades {
+			class := class + "-" + shade
+			trie.Insert(class, "color: "+toColorVar(color, "")+";")
+		}
 	}
-	// Tracking and leading (sample)
-	trie.Insert("tracking-tight", "letter-spacing: -0.05em;")
-	trie.Insert("leading-snug", "line-height: 1.375;")
+	// }
+	for k, w := range fontWeights {
+		trie.Insert("font-"+k, "font-weight: "+w+";")
+	}
+	// Tracking (Letter spacing)
+	for _, val := range tracking {
+		trie.Insert("tracking-"+val, "letter-spacing: var(--tracking-"+val+");")
+	}
+	for _, val := range lineHeights {
+		trie.Insert("leading-"+val, "line-height: var(--leading-"+val+");")
+	}
 	// Text align
 	for _, a := range []string{"left", "center", "right", "justify"} {
 		trie.Insert("text-"+a, "text-align: "+a+";")
 	}
-	// Text color (using our colors and a sample scale)
-	shades := []string{"50", "100", "200", "300", "400", "500", "600", "700", "800", "900"}
-	for _, color := range colorNames {
-		for _, shade := range shades {
-			class := "text-" + color + "-" + shade
-			rule := "color: " + color + shade + ";" // placeholder value
-			trie.Insert(class, rule)
-		}
+	for _, v := range borderWidths {
+		trie.Insert("underline-"+v, "text-decoration-thickness: "+v+"px;")
+		trie.Insert("underline-offset-"+v, "text-underline-offset: "+v+"px;")
 	}
-	// Underline, uppercase, etc.
-	trie.Insert("underline", "text-decoration: underline;")
-	trie.Insert("line-through", "text-decoration: line-through;")
-	trie.Insert("no-underline", "text-decoration: none;")
-	trie.Insert("uppercase", "text-transform: uppercase;")
-	trie.Insert("lowercase", "text-transform: lowercase;")
-	trie.Insert("capitalize", "text-transform: capitalize;")
-	trie.Insert("normal-case", "text-transform: none;")
+	// Text transformations
+	for key, value := range transformations {
+		trie.Insert(key, "text-transform: "+value+";")
+	}
+	// Text decorations
+	for key, value := range decorations {
+		trie.Insert(key, "text-decoration: "+value+";")
+	}
+	// Truncation & Overflow
 	trie.Insert("truncate", "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;")
 	trie.Insert("overflow-ellipsis", "text-overflow: ellipsis;")
 	trie.Insert("overflow-clip", "text-overflow: clip;")
@@ -311,104 +506,147 @@ func addTypography(trie *Trie) {
 
 // --- Background Utilities ---
 func addBackgrounds(trie *Trie) {
+	trie.Insert("bg-transparent", "background-color: transparent;")
+
 	// Background attachment
 	for _, att := range []string{"fixed", "local", "scroll"} {
 		trie.Insert("bg-"+att, "background-attachment: "+att+";")
 	}
 	// Background colors (using colors and shades)
-	shades := []string{"50", "100", "200", "300", "400", "500", "600", "700", "800", "900"}
+	// for _, opacity := range opacityValues {
 	for _, color := range colorNames {
+		class := "bg-" + color
+		trie.Insert(class, "background-color: "+toColorVar(color, "")+";")
 		for _, shade := range shades {
-			class := "bg-" + color + "-" + shade
-			rule := "background-color: " + color + shade + ";" // placeholder value
-			trie.Insert(class, rule)
+			class := class + "-" + shade
+			trie.Insert(class, "background-color: "+toColorVar(color, "")+";")
 		}
 	}
-	// Background opacity
-	for _, op := range opacityValues {
-		trie.Insert("bg-opacity-"+op, "background-opacity: "+op+"%;")
-	}
+	// }
+	// TODO:
 	// Gradient direction
-	for _, d := range []string{"t", "tr", "r", "br", "b", "bl", "l", "tl"} {
-		trie.Insert("bg-gradient-to-"+d, "background-image: linear-gradient(to "+d+", var(--tw-gradient-stops));")
-	}
+	// for _, d := range []string{"t", "tr", "r", "br", "b", "bl", "l", "tl"} {
+	// 	trie.Insert("bg-gradient-to-"+d, "background-image: linear-gradient(to "+d+", var(--gradient-stops));")
+	// }
+	// TODO:
 	// Gradient color stops
+}
+
+// --- Ring Utils ---
+func addRingUtils(trie *Trie) {
+	// Ring widths (0, 1, 2, 4, 8, etc.)
+	ringWidths := []string{"0", "1", "2", "4", "8"}
+	for _, w := range ringWidths {
+		trie.Insert("ring-"+w, "box-shadow: 0 0 0 "+w+"px var(--ring-color, rgba(59, 130, 246, 0.5));")
+	}
+
+	// Ring colors
 	for _, color := range colorNames {
+		trie.Insert("ring-"+color, "--ring-color: var(--color-"+color+"-500);")
 		for _, shade := range shades {
-			trie.Insert("from-"+color+"-"+shade, "/* from-color: "+color+shade+" */")
-			trie.Insert("via-"+color+"-"+shade, "/* via-color: "+color+shade+" */")
-			trie.Insert("to-"+color+"-"+shade, "/* to-color: "+color+shade+" */")
+			trie.Insert("ring-"+color+"-"+shade, "--ring-color: var(--color-"+color+"-"+shade+");")
 		}
+	}
+
+	// Ring offset (spacing between the ring and the element)
+	ringOffsets := []string{"0", "1", "2", "4", "8"}
+	for _, offset := range ringOffsets {
+		trie.Insert("ring-offset-"+offset, "--ring-offset-width: "+offset+"px;")
+	}
+
+	// Ring offset color
+	for _, color := range colorNames {
+		trie.Insert("ring-offset-"+color, "--ring-offset-color: var(--color-"+color+"-500);")
+		for _, shade := range shades {
+			trie.Insert("ring-offset-"+color+"-"+shade, "--ring-offset-color: var(--color-"+color+"-"+shade+");")
+		}
+	}
+}
+
+// --- Border Ring Utils ---
+func addDivideUtils(trie *Trie) {
+	// Divide widths (0, 2, 4, 8, etc.)
+	for _, w := range borderWidths {
+		trie.Insert("divide-x-"+w, "border-right-width: "+w+"px; border-left-width: "+w+"px;")
+		trie.Insert("divide-y-"+w, "border-top-width: "+w+"px; border-bottom-width: "+w+"px;")
+	}
+
+	//
+	// for _, opacity := range opacityValues {
+	for _, color := range colorNames {
+		class := "divide-" + color
+		trie.Insert(class, "border-color: "+toColorVar(color+"-500", "")+";")
+		for _, shade := range shades {
+			class := class + "-" + shade
+			trie.Insert(class, "border-color: "+toColorVar(color, "")+";")
+		}
+	}
+	// }
+
+	// Divide styles
+	divideStyles := []string{"solid", "dashed", "dotted", "double", "none"}
+	for _, style := range divideStyles {
+		trie.Insert("divide-"+style, "border-style: "+style+";")
 	}
 }
 
 // --- Border Utilities ---
 func addBorders(trie *Trie) {
-	// Border widths
+	// Border widths (0, 2, 4, 8, etc.)
 	for _, w := range borderWidths {
 		trie.Insert("border-"+w, "border-width: "+w+"px;")
 	}
-	// Border colors (using sample colors)
+	// for _, opacity := range opacityValues {
 	for _, color := range colorNames {
-		trie.Insert("border-"+color, "border-color: "+color+";")
-		trie.Insert("divide-"+color, "border-color: "+color+";")
-		trie.Insert("ring-"+color, "ring-color: "+color+";")
-	}
-	// Border opacity, divide opacity, and ring opacity
-	for _, op := range opacityValues {
-		trie.Insert("border-opacity-"+op, "border-opacity: "+op+"%;")
-		trie.Insert("divide-opacity-"+op, "divide-opacity: "+op+"%;")
-		trie.Insert("ring-opacity-"+op, "ring-opacity: "+op+"%;")
-	}
-	// Rounded corners
-	for _, r := range roundedSizes {
-		trie.Insert("rounded-"+r, "border-radius: "+r+";")
-	}
-	// Rounded by side (t, r, b, l, tl, tr, br, bl)
-	for _, side := range []string{"t", "r", "b", "l", "tl", "tr", "br", "bl"} {
-		for _, r := range roundedSizes {
-			trie.Insert("rounded-"+side+"-"+r, "/* border-radius on "+side+": "+r+" */")
+		class := "border-" + color
+		trie.Insert(class, "border-color: "+toColorVar(color+"-500", "")+";")
+		for _, shade := range shades {
+			trie.Insert("border-"+color+"-"+shade, "border-color: "+toColorVar(color, "")+";")
 		}
 	}
-	// Border styles
-	for _, s := range borderStyles {
-		trie.Insert("border-"+s, "border-style: "+s+";")
+	// }
+
+	// Base rounded corners (e.g., rounded-sm, rounded-lg)
+	trie.Insert("rounded", "border-radius: var(--radius-md);")
+	for _, val := range roundedSizes {
+		trie.Insert("rounded-"+val, "border-radius: var(--radius-"+val+");")
 	}
-	// Divide utilities: numeric and reverse
-	for _, axis := range []string{"x", "y"} {
-		for _, w := range borderWidths {
-			trie.Insert("divide-"+axis+"-"+w, "divide-"+axis+": "+w+"px;")
-		}
-		trie.Insert("divide-"+axis+"-reverse", "divide-"+axis+"-reverse: 1;")
+	for _, style := range borderStyles {
+		trie.Insert("border-"+style, "border-style: "+style+";")
 	}
-	// Ring widths and offsets
-	for _, rw := range ringWidths {
-		trie.Insert("ring-"+rw, "ring-width: "+rw+"px;")
-	}
-	for _, ro := range ringOffsets {
-		trie.Insert("ring-offset-"+ro, "ring-offset-width: "+ro+"px;")
-		// Also support ring-offset color using our colors:
-		for _, color := range colorNames {
-			trie.Insert("ring-offset-"+color, "ring-offset-color: "+color+";")
-		}
+
+	// Generate rounded classes with logical properties
+	for _, val := range roundedSizes {
+		trie.Insert("rounded-t-"+val, "border-top-left-radius: var(--radius-"+val+");"+"border-top-right-radius: var(--radius-"+val+");")
+		trie.Insert("rounded-l-"+val, "border-top-left-radius: var(--radius-"+val+");"+"border-bottom-left-radius: var(--radius-"+val+");")
+		trie.Insert("rounded-r-"+val, "border-top-right-radius: var(--radius-"+val+");"+"border-bottom-right-radius: var(--radius-"+val+");")
+		trie.Insert("rounded-b-"+val, "border-bottom-left-radius: var(--radius-"+val+");"+"border-bottom-right-radius: var(--radius-"+val+");")
+		//
+		trie.Insert("rounded-tl-"+val, "border-top-left-radius: var(--radius-"+val+");")
+		trie.Insert("rounded-tr-"+val, "border-top-right-radius: var(--radius-"+val+");")
+		trie.Insert("rounded-bl-"+val, "border-bottom-left-radius: var(--radius-"+val+");")
+		trie.Insert("rounded-br-"+val, "border-bottom-right-radius: var(--radius-"+val+");")
+
 	}
 }
 
 // --- Effects Utilities ---
 func addEffects(trie *Trie) {
 	// Shadows: sizes and with color
-	for _, s := range []string{"sm", "md", "lg", "xl", "2xl", "inner", "none"} {
-		trie.Insert("shadow-"+s, "box-shadow: "+s+";")
+	for _, s := range boxShadowSizes {
+		trie.Insert("shadow-"+s, "box-shadow: var(--shadow-"+s+");")
 	}
 	for _, color := range colorNames {
-		trie.Insert("shadow-"+color, "box-shadow: "+color+";")
+		trie.Insert("shadow-"+color, "box-shadow: var(--shadow-color, var(--color-"+color+"-500));")
 	}
 	// Opacity
 	for _, op := range opacityValues {
+		if op == "" {
+			return
+		}
 		trie.Insert("opacity-"+op, "opacity: "+op+"%;")
 	}
 	// Mix-blend and background-blend modes
-	mixBlendModes := []string{"normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"}
 	for _, mode := range mixBlendModes {
 		trie.Insert("mix-blend-"+mode, "mix-blend-mode: "+mode+";")
 		trie.Insert("background-blend-"+mode, "background-blend-mode: "+mode+";")
@@ -419,8 +657,8 @@ func addEffects(trie *Trie) {
 func addFilters(trie *Trie) {
 	trie.Insert("filter", "filter: blur(0);")
 	trie.Insert("filter-none", "filter: none;")
-	for _, b := range []string{"none", "sm", "md", "lg", "xl", "2xl", "3xl"} {
-		trie.Insert("blur-"+b, "filter: blur("+b+");")
+	for _, b := range blurValues {
+		trie.Insert("blur-"+b, "filter: blur(var(--blur-"+b+"));")
 	}
 	for _, b := range []string{"0", "50", "75", "90", "95", "100", "105", "110", "125", "150", "200"} {
 		trie.Insert("brightness-"+b, "filter: brightness("+b+"%);")
@@ -428,16 +666,16 @@ func addFilters(trie *Trie) {
 	for _, c := range []string{"0", "50", "75", "100", "125", "150", "200"} {
 		trie.Insert("contrast-"+c, "filter: contrast("+c+"%);")
 	}
-	for _, g := range []string{"0", "100"} {
+	for _, g := range []string{"0", "25", "50", "75", "100"} {
 		trie.Insert("grayscale-"+g, "filter: grayscale("+g+"%);")
 	}
 	for _, h := range []string{"0", "15", "30", "60", "90", "180"} {
 		trie.Insert("hue-rotate-"+h, "filter: hue-rotate("+h+"deg);")
 	}
-	for _, inv := range []string{"0", "100"} {
+	for _, inv := range []string{"0", "50", "100"} {
 		trie.Insert("invert-"+inv, "filter: invert("+inv+"%);")
 	}
-	for _, s := range []string{"0", "50", "100", "150", "200"} {
+	for _, s := range []string{"0", "50", "75", "95", "100", "150", "200"} {
 		trie.Insert("saturate-"+s, "filter: saturate("+s+"%);")
 	}
 	for _, s := range []string{"0", "100"} {
@@ -448,15 +686,65 @@ func addFilters(trie *Trie) {
 	}
 }
 
-// --- Tables Utilities ---
 func addTables(trie *Trie) {
+	// Table layout
+	trie.Insert("table-auto", "table-layout: auto;")
+	trie.Insert("table-fixed", "table-layout: fixed;")
+
+	// Border collapse
 	trie.Insert("border-collapse", "border-collapse: collapse;")
 	trie.Insert("border-separate", "border-collapse: separate;")
-	for _, t := range []string{"auto", "fixed"} {
-		trie.Insert("table-"+t, "table-layout: "+t+";")
+
+	// Table spacing (border spacing)
+	spacingValues := []string{"0", "1", "2", "4", "8"}
+	for _, val := range spacingValues {
+		trie.Insert("border-spacing-"+val, "border-spacing: "+val+"px;")
+		trie.Insert("border-spacing-x-"+val, "border-spacing: "+val+"px 0;")
+		trie.Insert("border-spacing-y-"+val, "border-spacing: 0 "+val+"px;")
 	}
-	for _, pos := range []string{"top", "bottom"} {
-		trie.Insert("caption-"+pos, "caption-side: "+pos+";")
+
+	// Table alignment
+	trie.Insert("table-caption-top", "caption-side: top;")
+	trie.Insert("table-caption-bottom", "caption-side: bottom;")
+
+	// Table row and cell alignment
+	trie.Insert("table-align-top", "vertical-align: top;")
+	trie.Insert("table-align-middle", "vertical-align: middle;")
+	trie.Insert("table-align-bottom", "vertical-align: bottom;")
+
+	// Table borders
+	for _, width := range borderWidths {
+		trie.Insert("table-border-"+width, "border-width: "+width+"px;")
+	}
+	for _, color := range colorNames {
+		trie.Insert("table-border-"+color, "border-color: var(--color-"+color+"-500);")
+		for _, shade := range shades {
+			trie.Insert("table-border-"+color+"-"+shade, "border-color: var(--color-"+color+"-"+shade+");")
+		}
+	}
+
+	// Table row and cell padding
+	paddingValues := []string{"0", "1", "2", "3", "4", "5", "8", "12", "16"}
+	for _, val := range paddingValues {
+		trie.Insert("table-padding-"+val, "padding: "+val+"px;")
+		trie.Insert("table-padding-x-"+val, "padding-left: "+val+"px; padding-right: "+val+"px;")
+		trie.Insert("table-padding-y-"+val, "padding-top: "+val+"px; padding-bottom: "+val+"px;")
+	}
+
+	// Table row and cell background colors
+	for _, color := range colorNames {
+		trie.Insert("table-bg-"+color, "background-color: var(--color-"+color+"-500);")
+		for _, shade := range shades {
+			trie.Insert("table-bg-"+color+"-"+shade, "background-color: var(--color-"+color+"-"+shade+");")
+		}
+	}
+
+	// Table row and cell text colors
+	for _, color := range colorNames {
+		trie.Insert("table-text-"+color, "color: var(--color-"+color+"-500);")
+		for _, shade := range shades {
+			trie.Insert("table-text-"+color+"-"+shade, "color: var(--color-"+color+"-"+shade+");")
+		}
 	}
 }
 
@@ -493,7 +781,6 @@ func addTransforms(trie *Trie) {
 	for _, r := range []string{"0", "45", "90", "180"} {
 		trie.Insert("rotate-"+r, "transform: rotate("+r+"deg);")
 	}
-	translateValues := []string{"0", "1", "2", "3", "4", "5", "6", "8", "10", "12", "16", "20", "24", "32", "40", "48", "56", "64", "px", "full", "1/2", "1/3", "2/3", "1/4", "2/4", "3/4"}
 	for _, axis := range []string{"x", "y"} {
 		for _, tVal := range translateValues {
 			trie.Insert("translate-"+axis+"-"+tVal, "transform: translate"+axis+"("+tVal+");")
@@ -542,15 +829,22 @@ func addInteractivity(trie *Trie) {
 
 // --- SVG Utilities ---
 func addSVG(trie *Trie) {
-	for _, color := range colorNames {
-		trie.Insert("fill-"+color, "fill: "+color+";")
-		trie.Insert("stroke-"+color, "stroke: "+color+";")
-	}
 	trie.Insert("fill-none", "fill: none;")
 	trie.Insert("fill-current", "fill: currentColor;")
 	trie.Insert("stroke-none", "stroke: none;")
 	trie.Insert("stroke-current", "stroke: currentColor;")
-	for _, s := range []string{"0", "1", "2"} {
+	// for _, opacity := range opacityValues {
+	for _, color := range colorNames {
+		trie.Insert("fill-"+color, "fill: "+toColorVar(color, "")+";")
+		trie.Insert("stroke-"+color, "stroke: "+toColorVar(color, "")+";")
+		for _, shade := range shades {
+			color := color + "-" + shade
+			trie.Insert("stroke-"+color, "stroke: "+toColorVar(color, "")+";")
+			trie.Insert("fill-"+color, "stroke: "+toColorVar(color, "")+";")
+		}
+	}
+	// }
+	for _, s := range []string{"0", "1", "2", "3"} {
 		trie.Insert("stroke-"+s, "stroke-width: "+s+"px;")
 	}
 }
@@ -561,7 +855,60 @@ func addAccessibility(trie *Trie) {
 	trie.Insert("not-sr-only", "position: static; width: auto; height: auto; padding: 0; margin: 0; overflow: visible; clip: auto; white-space: normal;")
 }
 
+// Aspect Ratio Utilities
+func addAspectRatio(trie *Trie) {
+	trie.Insert("aspect-auto", "aspect-ratio: auto;")
+	trie.Insert("aspect-square", "aspect-ratio: 1 / 1;")
+	trie.Insert("aspect-video", "aspect-ratio: 16 / 9;")
+}
+
+// Scroll Snap Utilities
+func addScrollSnap(trie *Trie) {
+	trie.Insert("snap-start", "scroll-snap-align: start;")
+	trie.Insert("snap-center", "scroll-snap-align: center;")
+	trie.Insert("snap-end", "scroll-snap-align: end;")
+	trie.Insert("snap-always", "scroll-snap-stop: always;")
+	trie.Insert("snap-none", "scroll-snap-type: none;")
+}
+
+// Placeholder Styling
+func addPlaceholderStyling(trie *Trie) {
+	// TODO:
+}
+
+// Advanced Utilities (forms, typography/prose, line-clamp, advanced animations)
+func addAdvancedUtilities(trie *Trie) {
+	// Forms plugin (sample inputs)
+	// TODO:
+
+	// Typography - prose classes
+	// TODO:
+
+	// Line-clamp utilities
+	// TODO:
+
+	// Advanced animation (sample pulse animation)
+	// TODO:
+	// trie.Insert("animate-pulse", "animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;")
+}
+
 // Helper: itoa converts an integer to a string.
 func itoa(i int) string {
 	return fmt.Sprintf("%d", i)
+}
+
+// Helper: valVar helper for converting to a value to a css var(...)
+func toColorVar(nameStr, opacityVar string) string {
+	if opacityVar != "" {
+		return "color-mix(in oklab, var(--color-" + nameStr + ") " + opacityVar + ", transparent)"
+	}
+	return "var(--color-" + nameStr + ")"
+}
+
+// Helper: toCalcVar helper for converting to a value to a css calc(var(... ) * X)
+func toCalcVar(nameStr, numStr, prefixStr string) string {
+	if prefixStr != "" {
+		return "calc(var(--" + prefixStr + "-" + nameStr + ") * " + numStr + ")"
+	}
+	return "calc(var(--" + nameStr + ") * " + numStr + ")"
 }

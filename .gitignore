@@ -3,6 +3,7 @@ build
 tmp
 example/build
 example/tmp
+built-example
 
 # logs
 logs
@@ -14,5 +15,10 @@ logs
 # tests
 *.test.exe
 __debug_*.exe
+# -- atomicstyle
+atomicstyle/output.css
+atomicstyle/trie_dump.txt
+
+
 # other
 .DS_Store

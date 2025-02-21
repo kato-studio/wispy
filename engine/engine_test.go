@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kato-studio/wispy/atomicstyle"
 	"github.com/kato-studio/wispy/engine"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,7 @@ import (
 
 func setupTestServer() *echo.Echo {
 	e := echo.New()
+	engine.Wispy.SITE_DIR = "../example/sites"
 	engine.BuildSiteMap()
 
 	e.GET("*", func(c echo.Context) error {
@@ -27,7 +29,7 @@ func setupTestServer() *echo.Echo {
 
 		if _, exists := engine.ESSENTIAL_SERVE[filename]; exists {
 			fmt.Println("Serving essential file:", filename)
-			return c.File("sites/" + domain + "/public/essential" + filename)
+			return c.File(engine.Wispy.SITE_DIR + "/" + domain + "/public/essential" + filename)
 		}
 
 		startTime := time.Now()
@@ -48,12 +50,14 @@ func setupTestServer() *echo.Echo {
 			return c.String(http.StatusInternalServerError, "Render error")
 		}
 
-		var results = bytes.Buffer{}
-		results.WriteString(page)
+		results := bytes.NewBuffer([]byte{})
+		reader := bytes.NewReader([]byte(page))
 
-		// classes := atomicstyle.RegexExtractClasses(page)
-		// compiledCss := atomicstyle.WispyStyleGenerate(classes, atomicstyle.WispyStaticStyles, atomicstyle.WispyColors)
-		// results.WriteString("<style>" + atomicstyle.WispyStyleCompile(compiledCss) + "</style>")
+		trie := atomicstyle.BuildFullTrie()
+		classes := atomicstyle.ExtractClasses(reader)
+		css := atomicstyle.GenerateCSS(classes, trie)
+		results.WriteString("<style>" + css + "</style>")
+		results.Write(results.Bytes())
 
 		fmt.Println("Response generated successfully:", time.Since(startTime))
 		return c.HTMLBlob(http.StatusOK, results.Bytes())
@@ -65,13 +69,19 @@ func setupTestServer() *echo.Echo {
 func TestServer(t *testing.T) {
 	e := setupTestServer()
 
-	req := httptest.NewRequest(http.MethodGet, "/test-route", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Host = "abc.test"
 	res := httptest.NewRecorder()
-	fmt.Println("Executing test request for abc.test")
+	t.Log("Executing test request for abc.test")
 	e.ServeHTTP(res, req)
+
+	t.Log("=====OUTPUT=====")
+	t.Logf(res.Body.String())
+	t.Log("================")
+	t.Logf("\n\n")
+	t.Log("")
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	assert.Contains(t, res.Body.String(), "Welcome to abc.test")
-	fmt.Println("Test completed successfully")
+	t.Log("Test completed successfully")
 }

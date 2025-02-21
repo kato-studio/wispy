@@ -1,5 +1,12 @@
 package atomicstyle
 
+import (
+	"fmt"
+	"io"
+	"os"
+	"strings"
+)
+
 // TrieNode represents a node in the trie.
 type TrieNode struct {
 	children map[rune]*TrieNode
@@ -51,4 +58,60 @@ func (t *Trie) Search(className string) (string, bool) {
 		return node.cssRule, true
 	}
 	return "", false
+}
+
+// Dump writes the structure of the trie to the provided io.Writer.
+func (t *Trie) Dump(w io.Writer) {
+	t.dumpNode(w, t.root, 0)
+}
+
+// dumpNode is a helper function to recursively write the trie nodes to the io.Writer.
+func (t *Trie) dumpNode(w io.Writer, node *TrieNode, level int) {
+	indent := strings.Repeat("  ", level)
+	for char, child := range node.children {
+		fmt.Fprintf(w, "%s%c", indent, char)
+		if child.isEnd {
+			fmt.Fprintf(w, " (end: %s)", child.cssRule)
+		}
+		fmt.Fprintln(w)
+		t.dumpNode(w, child, level+1)
+	}
+}
+
+// ConvertToCSS traverses the trie and generates CSS rules for all classes.
+func (t *Trie) ConvertToCSS(w io.Writer, buildSelectorFunc func(className string, prefixes []string) (string, string)) {
+	t.convertNodeToCSS(w, t.root, "", buildSelectorFunc, nil)
+}
+
+// convertNodeToCSS is a helper function to recursively generate CSS rules.
+func (t *Trie) convertNodeToCSS(w io.Writer, node *TrieNode, prefix string, buildSelectorFunc func(className string, prefixes []string) (string, string), prefixes []string) {
+	if node.isEnd {
+		// Generate the selector and media query for the current class
+		selector, mediaQuery := buildSelectorFunc(prefix, prefixes)
+		// Write the CSS rule to the writer
+		if mediaQuery != "" {
+			fmt.Fprintf(w, "%s { %s { %s } }\n", mediaQuery, selector, node.cssRule)
+		} else {
+			fmt.Fprintf(w, "%s { %s }\n", selector, node.cssRule)
+		}
+	}
+
+	// Recursively process all child nodes
+	for char, child := range node.children {
+		t.convertNodeToCSS(w, child, prefix+string(char), buildSelectorFunc, prefixes)
+	}
+}
+
+// WriteCSSToFile writes the entire trie's CSS rules to a file.
+func (t *Trie) WriteCSSToFile(filename string, buildSelectorFunc func(className string, prefixes []string) (string, string)) error {
+	// Open the file for writing
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("error creating file: %w", err)
+	}
+	defer file.Close()
+
+	// Convert the trie to CSS and write to the file
+	t.ConvertToCSS(file, buildSelectorFunc)
+	return nil
 }

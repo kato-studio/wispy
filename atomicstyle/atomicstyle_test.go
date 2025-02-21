@@ -8,10 +8,11 @@ import (
 )
 
 func TestBegin(t *testing.T) {
-	result := atomicstyle.Begin()
+	result := atomicstyle.BeginTest()
 	log.Printf("Generated CSS: \n%s", result)
 
 	if result == "" {
 		t.Errorf("Expected generated CSS, but got empty string")
 	}
+
 }
