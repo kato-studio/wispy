@@ -1,10 +1,18 @@
 {
   "cSpell.words": [
     "atomicstyle",
+    "cutset",
     "datatypes",
+    "ebnf",
     "labstack",
+    "pongo",
     "tmpl"
   ],
+  "files.associations": {
+    "*.hstm": "liquid",
+    "*.js": "javascript",
+    "*.log": "log",
+  },
   "files.watcherExclude": {
     "**/.git": true,
     "**/.DS_Store": true,

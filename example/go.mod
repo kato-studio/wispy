@@ -13,6 +13,12 @@ require (
 )
 
 require (
+	github.com/flosch/pongo2/v6 v6.0.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/radovskyb/watcher v1.0.7 // indirect
+)
+
+require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
@@ -23,6 +29,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect

@@ -5,61 +5,90 @@ import (
 	"strings"
 )
 
-// UpcaseFilter converts a string value to uppercase.
-func UpcaseFilter(value interface{}, args []string) interface{} {
-	if s, ok := value.(string); ok {
-		return strings.ToUpper(s)
-	}
-	return value
+// Universal template data filters function struct
+type EngineFilter struct {
+	Name    string
+	Handler func(pipedValue any, args []string) (value any, err error)
 }
 
-// DowncaseFilter converts a string value to lowercase.
-func DowncaseFilter(value interface{}, args []string) interface{} {
-	if s, ok := value.(string); ok {
-		return strings.ToLower(s)
-	}
-	return value
-}
-
-// CapitalizeFilter converts the first character of a string to uppercase.
-func CapitalizeFilter(value interface{}, args []string) interface{} {
-	if s, ok := value.(string); ok && len(s) > 0 {
-		return strings.ToUpper(s[:1]) + s[1:]
-	}
-	return value
-}
-
-// StripFilter trims spaces from a string.
-func StripFilter(value interface{}, args []string) interface{} {
-	if s, ok := value.(string); ok {
-		return strings.TrimSpace(s)
-	}
-	return value
-}
-
-// TruncateFilter shortens a string to the specified length.
-func TruncateFilter(value interface{}, args []string) interface{} {
-	if s, ok := value.(string); ok && len(args) > 0 {
-		if n, err := strconv.Atoi(args[0]); err == nil && len(s) > n {
-			return s[:n]
+// Default template data filters functions
+var UpcaseFilter = EngineFilter{
+	Name: "upcase",
+	Handler: func(pipedValue any, args []string) (value any, err error) {
+		if s, ok := pipedValue.(string); ok {
+			return strings.ToUpper(s), nil
 		}
-	}
-	return value
+		return pipedValue, nil
+	},
 }
 
-// SliceFilter splits a string by the given delimiter (default is a comma).
-func SliceFilter(value interface{}, args []string) interface{} {
-	delimiter := ","
-	if len(args) > 0 && args[0] != "" {
-		delimiter = args[0]
-	}
-	if s, ok := value.(string); ok {
-		parts := strings.Split(s, delimiter)
-		var result []string
-		for _, part := range parts {
-			result = append(result, strings.TrimSpace(part))
+var DowncaseFilter = EngineFilter{
+	Name: "downcase",
+	Handler: func(pipedValue any, args []string) (value any, err error) {
+		if s, ok := pipedValue.(string); ok {
+			return strings.ToLower(s), nil
 		}
-		return result
-	}
-	return value
+		return pipedValue, nil
+	},
+}
+
+var CapitalizeFilter = EngineFilter{
+	Name: "capitalize",
+	Handler: func(pipedValue any, args []string) (value any, err error) {
+		if s, ok := pipedValue.(string); ok && len(s) > 0 {
+			return strings.ToUpper(s[:1]) + s[1:], nil
+		}
+		return pipedValue, nil
+	},
+}
+
+var StripFilter = EngineFilter{
+	Name: "strip",
+	Handler: func(pipedValue any, args []string) (value any, err error) {
+		if s, ok := pipedValue.(string); ok {
+			return strings.TrimSpace(s), nil
+		}
+		return pipedValue, nil
+	},
+}
+
+var TruncateFilter = EngineFilter{
+	Name: "truncate",
+	Handler: func(pipedValue any, args []string) (value any, err error) {
+		if s, ok := pipedValue.(string); ok && len(args) > 0 {
+			if n, err := strconv.Atoi(args[0]); err == nil && len(s) > n {
+				return s[:n], nil
+			}
+		}
+		return pipedValue, nil
+	},
+}
+
+var SliceFilter = EngineFilter{
+	Name: "slice",
+	Handler: func(pipedValue any, args []string) (value any, err error) {
+		delimiter := ","
+		if len(args) > 0 && args[0] != "" {
+			delimiter = args[0]
+		}
+		if s, ok := pipedValue.(string); ok {
+			parts := strings.Split(s, delimiter)
+			var result []string
+			for _, part := range parts {
+				result = append(result, strings.TrimSpace(part))
+			}
+			return result, nil
+		}
+		return pipedValue, nil
+	},
+}
+
+// Register default filters.
+var DefaultTemplateFilters = []EngineFilter{
+	UpcaseFilter,
+	DowncaseFilter,
+	CapitalizeFilter,
+	StripFilter,
+	TruncateFilter,
+	SliceFilter,
 }

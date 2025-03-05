@@ -9,8 +9,23 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/kato-studio/wispy/engine/ctx"
 	"github.com/kato-studio/wispy/engine/template"
 	"github.com/labstack/echo/v4"
+)
+
+var Log = ctx.Log
+var Wispy = ctx.Wispy
+
+const (
+	colorReset = "\033[0m"
+	// colorBlue    = "\033[34m"
+	// colorGreen   = "\033[32m"
+	// colorYellow  = "\033[33m"
+	// colorMagenta = "\033[35m"
+	// colorCyan    = "\033[36m"
+	colorRed  = "\033[31m"
+	colorGrey = "\033[90m"
 )
 
 /*
@@ -25,11 +40,10 @@ Core External Functions
 // The data parameter can include additional dynamic values and is augmented with
 // the render context under the key "_ctx".
 // The route key is assumed to be in the form "domain/pageName" (e.g. "example.com/about").
-func (site *SiteStructure) RenderRoute(requestPath string, data map[string]interface{}, c echo.Context) (output string, err error) {
+func RenderRoute(site *ctx.SiteStructure, requestPath string, data map[string]any, c echo.Context) (output string, err error) {
 	// Construct the route key. If route is empty, key becomes "domain/".
 	routeKey := site.Domain + requestPath
-	fmt.Println("Looking for...", requestPath)
-	fmt.Println("Looking for as ...", routeKey)
+	fmt.Println("Looking for \"" + requestPath + "\" as \"./sites/" + routeKey + "\"")
 	route, exists := site.Routes[routeKey]
 	if !exists {
 		return "", fmt.Errorf("route %s not found", routeKey)
@@ -37,7 +51,7 @@ func (site *SiteStructure) RenderRoute(requestPath string, data map[string]inter
 
 	// Create the render context and inject it into the data.
 	if data == nil {
-		data = make(map[string]interface{})
+		data = make(map[string]any)
 	}
 
 	// Optionally, inject additional values such as the page title.
@@ -47,30 +61,28 @@ func (site *SiteStructure) RenderRoute(requestPath string, data map[string]inter
 	engine := template.NewTemplateEngine()
 
 	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
-	ctx := template.NewRenderCtx(map[string]interface{}{
-		"Domain":      "example.com",
+	ctx := template.NewRenderCtx(engine, map[string]any{
 		"title":       "Welcome to abc.test!!",
 		"showContent": "true", // any non-empty string except "false" is truthy
 		"content":     "   This is some sample content.   ",
-		"items":       "apple, banana, cherry",
-		"condition":   "true",
-	})
+		"items":       []string{"kwei", "apple", "banana"},
+		"isTrue":      "true",
+		"condition":   "10 > 5",
+	}, &site.Partials)
 
-	// Render the sample template from file with timing logs.
-	fmt.Println("\nRendered Template:")
-	output, err = template.RenderString(route.Template, engine, ctx)
-
-	return output, err
-}
-
-// NewSiteStructure creates a new SiteStructure with initialized maps.
-func NewSiteStructure(domain string) SiteStructure {
-	return SiteStructure{
-		Domain:     domain,
-		Routes:     make(map[string]PageRoutes),
-		Layouts:    make(map[string]string),
-		Components: make(map[string]string),
+	var sb strings.Builder
+	renderErrors := template.Render(ctx, &sb, route.Template)
+	for ei, err := range renderErrors {
+		if ei == 0 {
+			fmt.Println(colorGrey + "-------------------" + colorReset)
+		}
+		fmt.Println(colorGrey+"["+colorRed+"Error"+colorGrey+"] "+colorReset, err)
+		if ei == len(renderErrors)-1 {
+			fmt.Println(colorGrey + "-------------------")
+		}
 	}
+
+	return sb.String(), err
 }
 
 // SetupWispyCache ensures the .wispy cache directory exists.
@@ -108,16 +120,16 @@ func BuildSiteMap() {
 				continue
 			}
 
-			siteStructure := NewSiteStructure(domain)
+			siteStructure := ctx.NewSiteStructure(domain)
 			if _, err := toml.Decode(string(configBytes), &siteStructure); err != nil {
 				fmt.Println(err)
 				Log.Error("Failed to load config for ", domain, " at ", configFilePath, ": ", err)
 			}
 
-			// Build pages, layouts, and components paths.
+			// Build pages, layouts, and partials paths.
 			pagesPath := filepath.Join(siteFolderPath, "pages")
 			layoutsPath := filepath.Join(siteFolderPath, "layouts")
-			componentsPath := filepath.Join(siteFolderPath, "components")
+			partialsPath := filepath.Join(siteFolderPath, "partials")
 
 			// Handle Pages: walk through the pages directory.
 			filepath.Walk(pagesPath, func(path string, info fs.FileInfo, err error) error {
@@ -151,15 +163,13 @@ func BuildSiteMap() {
 						// Use a key combining the domain and the pageName.
 						routeKey := domain + "/" + pageName
 						fmt.Println("Saving " + routeKey)
-						// For now, default the layout to default.html in layouts.
-						defaultLayoutPath := filepath.Join(siteFolderPath, "layouts", "default"+Wispy.FILE_EXT)
-						siteStructure.Routes[routeKey] = PageRoutes{
+						siteStructure.Routes[routeKey] = ctx.PageRoutes{
 							Name:     pageName,
 							Title:    domain,
-							Layout:   defaultLayoutPath,
+							Layout:   "",
 							Path:     path,
 							Template: string(templateData),
-							MetaTags: MetaTags{
+							MetaTags: ctx.MetaTags{
 								Title:         domain + " title",
 								Description:   "Page description here",
 								OgTitle:       domain + " title",
@@ -173,8 +183,8 @@ func BuildSiteMap() {
 				return nil
 			})
 
-			// Handle Components: walk through the components directory.
-			filepath.WalkDir(componentsPath, func(path string, d fs.DirEntry, err error) error {
+			// Handle Partials: walk through the partials directory.
+			filepath.WalkDir(partialsPath, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					Log.Error("Error accessing component path ", path, ": ", err)
 					return err
@@ -186,7 +196,7 @@ func BuildSiteMap() {
 						return err
 					}
 					componentName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
-					siteStructure.Components[componentName] = string(templateData)
+					siteStructure.Partials[componentName] = string(templateData)
 				}
 				return nil
 			})
@@ -209,14 +219,14 @@ func BuildSiteMap() {
 				return nil
 			})
 
-			SiteMap[domain] = siteStructure
+			ctx.SiteMap[domain] = siteStructure
 		}
 	}
 
 	fmt.Println("SiteMap Build Time: ", time.Since(buildStart))
 	// Log the list of sites for confirmation.
 	var domains []string
-	for domain := range SiteMap {
+	for domain := range ctx.SiteMap {
 		domains = append(domains, domain)
 	}
 	fmt.Println("Sites: ", domains)

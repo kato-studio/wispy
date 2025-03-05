@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
+	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"golang.org/x/net/html"
 )
@@ -49,95 +48,8 @@ var statePseudoPrefixes = map[string]string{
 	"open":              "[open]",
 }
 
-// --- Arbitrary Value Mapping ---
-// Map a utility prefix (e.g. "w", "m", "px", etc.) to its corresponding CSS property.
-var arbitraryMappings = map[string]string{
-	// Spacing & Sizing
-	"w":     "width",
-	"h":     "height",
-	"min-w": "min-width",
-	"min-h": "min-height",
-	"max-w": "max-width",
-	"max-h": "max-height",
-	"m":     "margin",
-	"mt":    "margin-top",
-	"mr":    "margin-right",
-	"mb":    "margin-bottom",
-	"ml":    "margin-left",
-	"mx":    "margin-left; margin-right",
-	"my":    "margin-top; margin-bottom",
-	"p":     "padding",
-	"pt":    "padding-top",
-	"pr":    "padding-right",
-	"pb":    "padding-bottom",
-	"pl":    "padding-left",
-	"px":    "padding-left; padding-right",
-	"py":    "padding-top; padding-bottom",
-	"gap":   "gap",
-	"gap-x": "column-gap",
-	"gap-y": "row-gap",
-
-	// Colors
-	"bg":     "background-color",
-	"border": "border-color",
-	"text":   "color",
-	"fill":   "fill",
-	"stroke": "stroke",
-
-	// Borders & Outlines
-	"rounded":  "border-radius",
-	"border-w": "border-width",
-	"border-t": "border-top-width",
-	"border-r": "border-right-width",
-	"border-b": "border-bottom-width",
-	"border-l": "border-left-width",
-	"ring":     "box-shadow",
-	"outline":  "outline",
-
-	// Positioning
-	"z":       "z-index",
-	"top":     "top",
-	"right":   "right",
-	"bottom":  "bottom",
-	"left":    "left",
-	"inset":   "inset",
-	"inset-x": "left; right",
-	"inset-y": "top; bottom",
-
-	// Typography
-	"leading":     "line-height",
-	"tracking":    "letter-spacing",
-	"font":        "font-family",
-	"text-size":   "font-size",
-	"text-weight": "font-weight",
-
-	// Flexbox & Grid
-	"flex":      "flex",
-	"grow":      "flex-grow",
-	"shrink":    "flex-shrink",
-	"basis":     "flex-basis",
-	"order":     "order",
-	"grid-cols": "grid-template-columns",
-	"grid-rows": "grid-template-rows",
-	"col-span":  "grid-column",
-	"row-span":  "grid-row",
-
-	// Misc
-	"opacity":    "opacity",
-	"shadow":     "box-shadow",
-	"blur":       "filter: blur",
-	"brightness": "filter: brightness",
-	"contrast":   "filter: contrast",
-	"grayscale":  "filter: grayscale",
-	"hue-rotate": "filter: hue-rotate",
-	"invert":     "filter: invert",
-	"saturate":   "filter: saturate",
-	"sepia":      "filter: sepia",
-}
-
 // --- CSS Generation ---
-// ExtractClasses parses HTML from the reader and extracts unique class names.
-// ExtractClasses parses HTML from the reader and extracts class names in order.
+// ExtractClasses parses HTML from the reader and extracts unique class names in order.
 func ExtractClasses(r io.Reader) []string {
 	seen := make(map[string]bool) // Track unique class names
 	var classList []string        // Preserve order
@@ -162,52 +74,15 @@ func ExtractClasses(r io.Reader) []string {
 			}
 		}
 	}
+	slices.Reverse(classList)
 	return classList
 }
 
-// Updated function to generate CSS dynamically
-// func GenerateDynamicCSS(class string) (string, bool) {
-// 	parts := strings.Split(class, ":")
-// 	base := parts[len(parts)-1]
-// 	prefixes := parts[:len(parts)-1]
-
-// 	if i := strings.Index(base, "-["); i != -1 && strings.HasSuffix(base, "]") {
-// 		propPrefix := base[:i]
-// 		arbitraryValue := base[i+2 : len(base)-1]
-// 		if rule, ok := generateArbitraryRule(propPrefix, arbitraryValue); ok {
-// 			selector := buildSelector(class, prefixes)
-// 			return selector + " { " + rule + " }", false
-// 		}
-// 	}
-// 	return "", false
-// }
-
-// generateArbitraryRule converts a utility prefix and its arbitrary value to a CSS rule.
-// func generateArbitraryRule(prefix, value string) (string, bool) {
-// 	if cssProp, ok := arbitraryMappings[prefix]; ok {
-// 		// For compound properties (like "mx" → "margin-left; margin-right")
-// 		if strings.Contains(cssProp, ";") {
-// 			parts := strings.Split(cssProp, ";")
-// 			var rules []string
-// 			for _, p := range parts {
-// 				p = strings.TrimSpace(p)
-// 				if p != "" {
-// 					rules = append(rules, fmt.Sprintf("%s: %s;", p, value))
-// 				}
-// 			}
-// 			return strings.Join(rules, " "), true
-// 		}
-// 		return fmt.Sprintf("%s: %s;", cssProp, value), true
-// 	}
-// 	return "", false
-// }
-
 // --- Selector & Media Wrapping Helpers ---
-
 // buildSelector constructs the CSS selector using the full original class (with proper escaping)
 // and then applies state pseudo-classes and group variants based on the provided prefixes.
 func BuildSelector(originalClass string, prefixes []string) (selector string, mediaQuery string) {
-	selector = "." + escapeClass(originalClass)
+	selector = "." + EscapeClass(originalClass)
 	var pseudoClasses []string
 	var groupSelector string
 
@@ -267,23 +142,23 @@ func BuildSelector(originalClass string, prefixes []string) (selector string, me
 	return selector, mediaQuery
 }
 
-func generateRuleForClass(class string, trie *Trie) (rule string, mediaQuery string, ok bool) {
+func GenerateRuleForClass(class string, trie *Trie) (rule string, mediaQuery string, ok bool) {
 	parts := strings.Split(class, ":")
 	base := parts[len(parts)-1]      // get last item
 	prefixes := parts[:len(parts)-1] // all except last item
-
 	// Try a static lookup on the base utility.
 	if ruleBody, ok := trie.Search(base); ok {
 		selector, mediaQuery := BuildSelector(class, prefixes)
 		return selector + " { " + ruleBody + " }", mediaQuery, true
 	} else {
-		fmt.Println("[-]", base)
+		if ruleBody, ok := ProcessRecipe(base); ok {
+			selector, mediaQuery := BuildSelector(class, prefixes)
+			return selector + " { " + ruleBody + " }", mediaQuery, true
+		}
+		// TODO: taggable from debug env flag
+		// fmt.Println("[X]", base)
 	}
 
-	// Fallback: if not found statically, attempt dynamic generation on the full class.
-	// if dynRule, ok := GenerateDynamicCSS(class); ok {
-	// 	return dynRule, true
-	// }
 	return "", "", false
 }
 
@@ -294,8 +169,10 @@ func GenerateCSS(classes []string, trie *Trie) string {
 	mediaQueryRules := make(map[string][]string)
 	var mediaQueryList []string // Maintain insertion order
 
+	// TODO: taggable from debug env flag
+	// fmt.Println("Missing classes?...") // used for debugging make
 	for _, className := range classes {
-		if rule, mediaQuery, ok := generateRuleForClass(className, trie); ok {
+		if rule, mediaQuery, ok := GenerateRuleForClass(className, trie); ok {
 			if mediaQuery == "" {
 				// Rules without media queries go into the default group
 				defaultRules = append(defaultRules, rule)
@@ -306,6 +183,9 @@ func GenerateCSS(classes []string, trie *Trie) string {
 				}
 				mediaQueryRules[mediaQuery] = append(mediaQueryRules[mediaQuery], rule)
 			}
+		} else {
+			// TODO: taggable from debug env flag
+			// fmt.Println(className)
 		}
 	}
 
@@ -316,7 +196,7 @@ func GenerateCSS(classes []string, trie *Trie) string {
 
 	// Sort media queries by Tailwind priority
 	sort.SliceStable(mediaQueryList, func(i, j int) bool {
-		return mediaQueryPriority(mediaQueryList[i]) < mediaQueryPriority(mediaQueryList[j])
+		return MediaQueryPriority(mediaQueryList[i]) < MediaQueryPriority(mediaQueryList[j])
 	})
 
 	// Output rules grouped by ordered media queries
@@ -332,7 +212,7 @@ func GenerateCSS(classes []string, trie *Trie) string {
 }
 
 // Define priority for Tailwind-like media queries
-func mediaQueryPriority(mq string) int {
+func MediaQueryPriority(mq string) int {
 	priority := map[string]int{
 		"@media (min-width: 640px)":  1, // sm
 		"@media (min-width: 768px)":  2, // md
@@ -347,35 +227,12 @@ func mediaQueryPriority(mq string) int {
 }
 
 // escapeClass escapes special characters (such as colon and square brackets) in class names.
-func escapeClass(class string) string {
-	s := strings.ReplaceAll(class, ":", "\\:")
+func EscapeClass(class string) string {
+	s := strings.ReplaceAll(class, "\\", "\\\\")
+	s = strings.ReplaceAll(s, ":", "\\:")
 	s = strings.ReplaceAll(s, "[", "\\[")
 	s = strings.ReplaceAll(s, "]", "\\]")
 	s = strings.ReplaceAll(s, ".", "\\.")
-	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, "/", "\\/")
 	return s
-}
-
-func BeginTest() string {
-	trie := BuildFullTrie()
-	input, _ := os.Open("./example.html")
-	defer input.Close()
-
-	fmt.Println("Execution Times")
-	fmt.Println("------------------")
-	extractTime := time.Now()
-	// Extract unique class names from the HTML.
-	classes := ExtractClasses(input)
-	fmt.Println("Extract: ", time.Since(extractTime))
-	generationTime := time.Now()
-	// Generate CSS rules for the extracted classes.
-	cssOutput := GenerateCSS(classes, trie)
-	fmt.Println("Generate: ", time.Since(generationTime))
-	fmt.Println("------------------")
-
-	// Output the generated CSS.
-	// fmt.Println(cssOutput)
-
-	return cssOutput
 }

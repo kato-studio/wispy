@@ -2,7 +2,10 @@ module github.com/kato-studio/wispy
 
 go 1.23.3
 
+// Windows
 replace github.com/kato-studio/wispy => /Users/theo/Desktop/kato/wispy
+
+replace github.com/kato-studio/wispy/engine => /Users/theo/Desktop/kato/wispy/engine
 
 require github.com/labstack/echo/v4 v4.13.3
 
@@ -17,6 +20,7 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
+	github.com/flosch/pongo2/v6 v6.0.0
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

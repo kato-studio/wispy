@@ -9,20 +9,26 @@ import (
 
 	"github.com/kato-studio/wispy/atomicstyle"
 	"github.com/kato-studio/wispy/engine"
+	"github.com/kato-studio/wispy/engine/ctx"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+)
+
+var (
+	colorCyan  = "\033[36m"
+	colorGrey  = "\033[90m"
+	colorReset = "\033[0m"
 )
 
 func main() {
 	const port = ":80"
 
 	// Static Middleware
-	engine.Echo.Static("/public", "./public")
-
+	ctx.Echo.Static("/public", "./public")
 	// ### Middleware:
 	// Logging and Security
-	engine.Echo.Use(middleware.Logger())
-	engine.Echo.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
+	ctx.Echo.Use(middleware.Logger())
+	ctx.Echo.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
 		Skipper:             middleware.DefaultSkipper,
 		StackSize:           4 << 10, // 4 KB
 		DisableStackAll:     false,
@@ -45,68 +51,82 @@ func main() {
 	// Routes
 
 	trie := atomicstyle.BuildFullTrie()
-	engine.Echo.GET("*", func(c echo.Context) error {
+
+	// brackets syntax
+	ctx.Echo.GET("*", func(c echo.Context) error {
 		domain := c.Request().Host
 		requestPath := c.Request().URL.Path
 		filename := filepath.Base(requestPath)
 
 		// Handle essential site files served from "/"
-		if _, exists := engine.ESSENTIAL_SERVE[filename]; exists {
+		if _, exists := ctx.ESSENTIAL_SERVE[filename]; exists {
 			return c.File("sites/" + domain + "/public/essential" + filename)
 		}
 
 		// Testing
 		startTime := time.Now()
-		data := map[string]interface{}{
-			"title": "Welcome to " + c.Request().Host,
+		data := map[string]any{
+			"domain": c.Request().Host,
+			"title":  "Welcome to " + c.Request().Host,
+			"text":   "go to" + c.Request().Host,
+			"link":   "/" + c.Request().Host,
+			"name":   "john doe",
+			"x":      42,
+			"items":  []string{"apple", "banana", "cherry"},
+			"bar":    "baz",
 		}
 
 		// Look up the site structure for the domain.
-		site, exists := engine.SiteMap[domain]
+		site, exists := ctx.SiteMap[domain]
 		if !exists {
 			return fmt.Errorf("domain %s not found", domain)
 		}
 
-		page, err := site.RenderRoute(requestPath, data, c)
+		page, err := engine.RenderRoute(&site, requestPath, data, c)
 		if err != nil {
 			engine.Log.Error(err)
 			return err
 		}
 
-		fmt.Println("----------")
-		fmt.Println("[] Render Time", time.Since(startTime))
+		// -----------
+		renderTime := time.Now()
 
 		var results = bytes.Buffer{}
 		results.WriteString(page)
 
 		styleTime := time.Now()
 		reader := bytes.NewReader([]byte(page))
-		fmt.Println("[] Style Setup Time", time.Since(styleTime))
 
 		styleExtTime := time.Now()
 		classes := atomicstyle.ExtractClasses(reader)
-		fmt.Println("[] Style Ext Time", time.Since(styleExtTime))
-		//
+
 		styleGenTime := time.Now()
 		css := atomicstyle.GenerateCSS(classes, trie)
-		fmt.Println("[] Style Gen Time", time.Since(styleGenTime))
-		//
-		fmt.Println("[] Style Time", time.Since(styleTime))
-		fmt.Println("[] Total Time", time.Since(startTime))
-		fmt.Println("----------")
-		results.WriteString("<style>" + css + "</style>")
-		results.Write(results.Bytes())
+		// -----------
 
+		colorize := func(dur time.Duration) string {
+			return fmt.Sprintf("%s%v%s", colorCyan, dur, colorGrey)
+		}
+
+		fmt.Printf("%s[Render: %s | Style: %s | Extract: %s | CSS: %s | Total: %s]%s\n",
+			colorGrey,
+			colorize(renderTime.Sub(startTime)),
+			colorize(styleTime.Sub(startTime)),
+			colorize(styleExtTime.Sub(styleTime)),
+			colorize(styleGenTime.Sub(styleExtTime)),
+			colorize(time.Since(startTime)),
+			colorReset)
+
+		results.WriteString("<style>" + css + "</style>")
+		//
 		// return c.Render(http.StatusOK, templateName, data)
 		return c.HTMLBlob(http.StatusOK, results.Bytes())
 	})
 
 	// Internal System setup
+	// - Initial Build and Start
+	// --- Build
 	engine.BuildSiteMap()
-	fmt.Println("-----")
-	fmt.Print(len(engine.SiteMap))
-
-	// Start server
-	engine.Log.Fatal(engine.Echo.Start(port))
-
+	// --- Start
+	engine.Log.Fatal(ctx.Echo.Start(port))
 }
