@@ -1,435 +1,233 @@
 package engine
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"maps"
+	"io/fs"
 	"os"
-	"slices"
+	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/kato-studio/wispy/internal"
+	"github.com/BurntSushi/toml"
+	"github.com/kato-studio/wispy/engine/ctx"
+	"github.com/kato-studio/wispy/engine/template"
+	"github.com/labstack/echo/v4"
 )
 
-// Html processes the raw HTML bytes and applies templating logic
-// ctxId is used as a unique identifier
-func (r *Render) Render(rawBytes []byte, data map[string]any, attrs map[string]string, children []*TreeNode, ctxId string) ([]byte, []error) {
-	// fmt.Println("Html render; data:", data)
-	var nodes []*TreeNode
-	var errs []error
-	var namedImportPath = make(map[string]string)
-	var output bytes.Buffer
+var Log = ctx.Log
+var Wispy = ctx.Wispy
 
-	// Step 1: Build the node tree from raw HTML
-	nodes, errs = r.BuildNodeTree(rawBytes, ctxId, namedImportPath)
+const (
+	colorReset = "\033[0m"
+	// colorBlue    = "\033[34m"
+	// colorGreen   = "\033[32m"
+	// colorYellow  = "\033[33m"
+	// colorMagenta = "\033[35m"
+	// colorCyan    = "\033[36m"
+	colorRed  = "\033[31m"
+	colorGrey = "\033[90m"
+)
 
-	// Component case!
-	fmt.Println("<> ", ctxId)
-	if len(ctxId) > len(ROOT_DIR) && ctxId[:len(ROOT_DIR)] == ROOT_DIR ||
-		len(ctxId) > len(SHARED_DIR) && ctxId[:len(SHARED_DIR)] == SHARED_DIR {
-		fmt.Println("ctxId", ctxId[:2])
-		fmt.Println(ctxId)
-		// 2. Create merged data context with component attributes
-		mergedData := maps.Clone(data)
-		for k, v := range attrs {
-			mergedData[k] = v
-		}
+/*
+=================================================================
+Core External Functions
+=================================================================
+*/
 
-		// 3. Build quick slot lookup
-		slots := make(map[string][]*TreeNode, 2) // Pre-allocate for common case (default + named slot)
-		for _, directChild := range nodes {
-			name := directChild.Attributes["slot"]
-			if name == "" {
-				name = "default"
-			}
-			slots[name] = append(slots[name], directChild)
-		}
-
-		for _, compNode := range children {
-			r.processNode(&output, compNode, mergedData, slots, namedImportPath)
-		}
-		return output.Bytes(), errs
+// RenderRoute renders a page route for a given domain and page name.
+// It looks up the page in the site's route map, executes the page template,
+// and then wraps it in a layout if specified.
+// The data parameter can include additional dynamic values and is augmented with
+// the render context under the key "_ctx".
+// The route key is assumed to be in the form "domain/pageName" (e.g. "example.com/about").
+func RenderRoute(site *ctx.SiteStructure, requestPath string, data map[string]any, c echo.Context) (output string, err error) {
+	// Construct the route key. If route is empty, key becomes "domain/".
+	routeKey := site.Domain + requestPath
+	fmt.Println("Looking for \"" + requestPath + "\" as \"./sites/" + routeKey + "\"")
+	route, exists := site.Routes[routeKey]
+	if !exists {
+		return "", fmt.Errorf("route %s not found", routeKey)
 	}
 
-	// Non-component
-	for _, child := range nodes {
-		r.processNode(&output, child, data, nil, namedImportPath)
+	// Create the render context and inject it into the data.
+	if data == nil {
+		data = make(map[string]any)
 	}
-	return output.Bytes(), errs
+
+	// Optionally, inject additional values such as the page title.
+	data["title"] = route.Title
+
+	// Create a new template engine.
+	engine := template.NewTemplateEngine()
+
+	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
+	ctx := template.NewRenderCtx(engine, map[string]any{
+		"title":       "Welcome to abc.test!!",
+		"showContent": "true", // any non-empty string except "false" is truthy
+		"content":     "   This is some sample content.   ",
+		"items":       []string{"kwei", "apple", "banana"},
+		"isTrue":      "true",
+		"condition":   "10 > 5",
+	}, &site.Partials)
+
+	var sb strings.Builder
+	renderErrors := template.Render(ctx, &sb, route.Template)
+	for ei, err := range renderErrors {
+		if ei == 0 {
+			fmt.Println(colorGrey + "-------------------" + colorReset)
+		}
+		fmt.Println(colorGrey+"["+colorRed+"Error"+colorGrey+"] "+colorReset, err)
+		if ei == len(renderErrors)-1 {
+			fmt.Println(colorGrey + "-------------------")
+		}
+	}
+
+	return sb.String(), err
 }
 
-// processNode processes each node, handling its content, attributes, and children
-func (r *Render) processNode(output *bytes.Buffer, node *TreeNode, data map[string]any, slots map[string][]*TreeNode, namedImportPath map[string]string) []error {
-	var errs []error
-
-	switch node.Type {
-	case "component":
-		// Handle components
-		compPath, compExists := namedImportPath[node.Name]
-		rawBytes, impExists := r.Imports[compPath]
-		if compExists && impExists {
-			//
-			bytes, compErrs := r.Render(rawBytes, data, node.Attributes, node.Children, compPath)
-			internal.IfErrPush(&errs, compErrs...)
-			output.Write(bytes)
-		} else {
-			// TODO only write string in "dev mode" ("dev mode" not yet implemented)
-			output.WriteString("[Could not load \"" + node.Name + "\"]")
+// SetupWispyCache ensures the .wispy cache directory exists.
+func SetupWispyCache() {
+	cacheDir := ".wispy"
+	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+		err := os.Mkdir(cacheDir, os.ModePerm)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to create .wispy directory: %v", err))
 		}
-		return nil
-	case "operation":
-		// Handle Imports (x:imports)
-		if node.Name == "x:imports" {
-			for name, rawImportPath := range node.Attributes {
-				//
-				var importPath = rawImportPath
-				fmt.Println("r.Imports for ::", importPath)
-				if _, exists := r.Imports[importPath]; exists {
-					fmt.Printf("[%s] Already in instance cache \"r.Imports\"", name)
-				} else {
-					var hasSharedPrefix bool
-					importPath, hasSharedPrefix = strings.CutPrefix(importPath, "@")
-					if hasSharedPrefix {
-						importPath = SHARED_DIR + importPath + EXT
-					}
-					var hasSitePrefix bool
-					importPath, hasSitePrefix = strings.CutPrefix(importPath, "~")
-					if hasSitePrefix {
-						importPath = ROOT_DIR + "/" + r.Ctx.Site.Name + importPath + EXT
-					}
-					//
-					rawBytes, err := os.ReadFile(importPath)
-					internal.IfErrPush(&errs, err)
-					if err == nil && (hasSharedPrefix || hasSitePrefix) {
-						namedImportPath[name] = importPath
-						r.Imports[importPath] = rawBytes
-					}
-				}
-			}
-		} else
-		// Handle Slots (x:slots)
-		if node.Name == "x:slot" {
-			slotName := "default"
-			if name, exists := node.Attributes["name"]; exists {
-				slotName = name
-			}
-
-			passedChildren, slotExists := slots[slotName]
-			if slotExists {
-				// Slot has been passed process child elements
-				for _, child := range passedChildren {
-					childErrors := r.processNode(output, child, data, nil, namedImportPath)
-					internal.IfErrPush(&errs, childErrors...)
-				}
-			} else {
-				// Handle fallback content
-				for _, child := range node.Children {
-					childErrors := r.processNode(output, child, data, nil, namedImportPath)
-					internal.IfErrPush(&errs, childErrors...)
-				}
-			}
-
-			return nil
-		}
-		// Handle other operations...
-		return nil
-	case "element":
-		// Process regular html elements
-		isSelfClosing := slices.Contains(SELF_CLOSING_TAGS, node.Name)
-
-		output.WriteString("<" + node.Name)
-		for attr, value := range node.Attributes {
-			processedAttrValue, err := r.processTemplateVariables(value, data)
-			internal.IfErrPush(&errs, err)
-			if attrFunc, exists := r.AttrFuncMap[attr]; exists {
-				changed, newAttr, attrErrs := attrFunc(attr, value)
-				internal.IfErrPush(&errs, attrErrs...)
-				if changed {
-					output.WriteString(fmt.Sprintf(` %s`, newAttr))
-				} else {
-					output.WriteString(fmt.Sprintf(` %s="%s"`, attr, processedAttrValue))
-				}
-			} else {
-				output.WriteString(fmt.Sprintf(` %s="%s"`, attr, processedAttrValue))
-			}
-			output.WriteString(fmt.Sprintf(` %s="%s"`, attr, processedAttrValue))
-		}
-		output.WriteString(">")
-
-		for _, child := range node.Children {
-			nodeErrs := r.processNode(output, child, data, slots, namedImportPath)
-			internal.IfErrPush(&errs, nodeErrs...)
-		}
-
-		if !isSelfClosing {
-			output.WriteString(fmt.Sprintf("</%s>", node.Name))
-		}
-	case "text":
-		processedContent, err := r.processTemplateVariables(node.Content, data)
-		internal.IfErrPush(&errs, err)
-		output.WriteString(processedContent)
 	}
-
-	return errs
 }
 
-// renderComponent handles component rendering with slot management
-// func (r *Render) renderComponent(componentTree []*TreeNode, rawNode *TreeNode, data map[string]any) ([]byte, []error) {
-
-// }
-
-// processTemplateVariables replaces template placeholders (e.g., {{.variable}}) with actual values from r.ctx.Data
-func (r *Render) processTemplateVariables(input string, data map[string]any) (string, error) {
-	result := input
-	for {
-		start := strings.Index(result, "{{")
-		if start == -1 {
-			break
-		}
-		end := strings.Index(result[start:], "}}")
-		if end == -1 {
-			return result[:start], errors.New("mismatched template placeholder syntax")
-		}
-		end = start + end // Adjust end to be relative to full string
-
-		placeholder := result[start+2 : end]
-		if placeholder[0] == '.' {
-			placeholder = placeholder[1:]
-			if val, found := data[placeholder]; found {
-				result = result[:start] + fmt.Sprintf("%v", val) + result[end+2:]
-			} else {
-				result = result[:start] + result[end+2:]
-			}
-		} else {
-			split := smartSplit([]byte(placeholder))
-			if len(split) > 1 {
-				result = result[:start] + callTemplateFunction(split) + result[end+2:]
-			} else {
-				result = result[:start] + result[end+2:]
-			}
-		}
+// BuildSiteMap builds the host-to-site mapping by reading directories from the sites folder.
+func BuildSiteMap() {
+	buildStart := time.Now()
+	// Read the sites directory.
+	entries, err := os.ReadDir(Wispy.SITE_DIR)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to read sites directory: %v", err))
 	}
 
-	return result, nil
-}
+	// Process each site (directory)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			domain := entry.Name()
+			siteFolderPath := filepath.Join(Wispy.SITE_DIR, domain)
+			configFilePath := filepath.Join(siteFolderPath, Wispy.SITE_CONFIG_NAME)
 
-// Dummy template function for now (can be replaced later with actual logic)
-func callTemplateFunction(args ...interface{}) string {
-	// This is a placeholder function; replace it with actual logic as needed
-	fmt.Println("args passed to dummyFunction", args)
-	return "[[Dummy Op]]"
-}
-
-// Builds a tree structure.
-// ctxId is used to prevent the same JS/CSS from being hoisted multiple times.
-// for components this is the components path (other sources TBD)
-func (r *Render) BuildNodeTree(rawBytes []byte, ctxId string, namedImportPath map[string]string) ([]*TreeNode, []error) {
-	var root TreeNode
-	var stack []*TreeNode
-	stack = append(stack, &root) // Start with a dummy root node
-	var currentContent []byte
-	var validContent = false
-	var inTag = false
-	var i = 0
-	var errs []error
-	var lineNumber = 1
-
-	reset := func() {
-		inTag = false
-		validContent = false
-		currentContent = nil
-	}
-
-	for ; i < len(rawBytes); i++ {
-
-		b := rawBytes[i]
-
-		// skip line break
-		if b == '\n' || b == '\r' || (isWhitespace(b) && isWhitespace(rawBytes[i+1])) {
-			if b == '\n' || b == '\r' {
-				// "temp fix" for line number not sure why the count is off by 1 from vscode file
-				// lineNumber is set 1 by default, so here we increment it to 2 if we're past the first line
-				if lineNumber == 1 {
-					lineNumber++
-				}
-				lineNumber++
-			}
-			continue
-		}
-		//
-		if !isWhitespace(b) {
-			validContent = true
-		}
-
-		// Core Logic
-		// --------
-		if b == '<' {
-			if len(currentContent) > 0 && validContent {
-				// A new tag/node has been found create a text node for any previously cached bytes
-				textNode := &TreeNode{
-					Type:    "text",
-					Content: string(currentContent),
-					// Content: string(bytes.TrimSuffix(currentContent, []byte{' '})),
-				}
-				parent := stack[len(stack)-1]
-				parent.Children = append(parent.Children, textNode)
-			}
-			reset()
-			inTag = true
-
-			// Handle closing comments
-			// we need to handle this first so that if we're in a comment
-			// we can continue without call other unnecessary checks
-			if bytes.HasPrefix(rawBytes[i:], []byte("<!--")) {
-				closingTag := []byte("-->")
-				closingIndex := bytes.Index(rawBytes[i:], closingTag)
-				if closingIndex == -1 {
-					fmt.Println("[Error] could not find comment closing tag attempting to resume parsing (unsafe comment parsing not implemented)")
-					fmt.Println("[Warn] skipping all content!")
-					i = len(rawBytes)
-				} else {
-					// add comment node to tree
-					commentNode := &TreeNode{
-						Type: "comment",
-						// "+4" used to exclude opening "<!--" bytes from comment contents
-						Content: string(rawBytes[i+4 : i+closingIndex]),
-					}
-					parent := stack[len(stack)-1]
-					parent.Children = append(parent.Children, commentNode)
-
-					// "+3" ensures we do not have hyphens left over from comment written as content
-					i += (closingIndex + len(closingTag))
-					reset()
-				}
+			// Read and decode the site config.
+			configBytes, err := os.ReadFile(configFilePath)
+			if err != nil {
+				fmt.Println(err)
+				Log.Error("Could not find config for ", domain, " at ", configFilePath, ": ", err)
+				continue
 			}
 
-			// Handling style tags
-			var stylePrefix = []byte("<style")
-			if bytes.HasPrefix(rawBytes[i:], stylePrefix) {
-				// Find the closing ">" of the <style> tag.
-				tagEndIndex := bytes.Index(rawBytes[i:], []byte(">"))
-				if tagEndIndex == -1 {
-					fmt.Print("[Error]", "Malformed HTML; no closing for <style> tag.")
-					break
-				} else {
-					tagEndIndex += i
-				}
-				// move index forward
-				i += len(stylePrefix)
-				// remove closing bracket
-				styleTag := rawBytes[i:tagEndIndex]
-				attributes := parseAttributes(styleTag)
-				scopeNamespace, isScoped := attributes["scoped"]
-				if scopeNamespace == "" && isScoped {
-					scopeNamespace = strings.ReplaceAll(ctxId, "/", "-")
-				}
-				//
-				closingTag := "</style>"
-				closingIndex := bytes.Index(rawBytes[tagEndIndex:], []byte(closingTag))
-				if closingIndex == -1 {
-					fmt.Print("[Error]", "Malformed HTML; no closing </style>.")
-					break
-				} else {
-					closingIndex += tagEndIndex
-				}
-
-				// Handle non-scoped style tag
-				if !isScoped {
-					commentNode := &TreeNode{
-						Name: "style",
-						Type: "element",
-						// "+4" used to exclude opening "<!--" bytes from comment contents
-						Content: string(rawBytes[i+4 : i+closingIndex]),
-					}
-					parent := stack[len(stack)-1]
-					parent.Children = append(parent.Children, commentNode)
-
-					i = closingIndex + len(closingTag)
-					reset()
-					continue
-				}
-
-				// Handle hoisting scoped styles
-				_, exists := r.Css[ctxId]
-				if !exists {
-					// extract all styles within <style> tag
-					styles := rawBytes[tagEndIndex+1 : closingIndex]
-					// Scope the styles inside the <style> block.
-					var selector = scopeNamespace
-					scopedStyles := scopeStyles(selector, string(styles))
-					r.Css[ctxId] = []byte(scopedStyles)
-					// Append the processed styles and update the offset.
-				}
-
-				i = closingIndex + len(closingTag)
-
-				reset()
+			siteStructure := ctx.NewSiteStructure(domain)
+			if _, err := toml.Decode(string(configBytes), &siteStructure); err != nil {
+				fmt.Println(err)
+				Log.Error("Failed to load config for ", domain, " at ", configFilePath, ": ", err)
 			}
 
-			continue
-		}
+			// Build pages, layouts, and partials paths.
+			pagesPath := filepath.Join(siteFolderPath, "pages")
+			layoutsPath := filepath.Join(siteFolderPath, "layouts")
+			partialsPath := filepath.Join(siteFolderPath, "partials")
 
-		if b == '>' {
-			if inTag {
-				tagContent := currentContent
-				reset()
-				inTag = false
-
-				if len(tagContent) > 0 {
-					if tagContent[0] == '/' {
-						// Closing tag
-						// Handle closing tag does not have start tag
-						if len(stack[:len(stack)-1]) == 0 {
-							fmt.Printf("[Error] broken end tag line:[%d] <%s> \n", lineNumber, string(tagContent))
-							continue
-						} else {
-							// Happy path
-							stack = stack[:len(stack)-1]
+			// Handle Pages: walk through the pages directory.
+			filepath.Walk(pagesPath, func(path string, info fs.FileInfo, err error) error {
+				if err != nil {
+					fmt.Println(err)
+					Log.Error("Error accessing path ", path, ": ", err)
+					return err
+				}
+				// Only process files with the configured extension.
+				if !info.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
+					// Check if file name (without extension) matches the page file name.
+					baseName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
+					if baseName == Wispy.PAGE_FILE_NAME {
+						// Determine the page name as the relative directory from the pages folder.
+						relDir, err := filepath.Rel(pagesPath, filepath.Dir(path))
+						if err != nil {
+							fmt.Println(err)
+							Log.Error("Error computing relative path for ", path, ": ", err)
+							return err
 						}
-					} else {
-						// Opening or Self-closing tag
-						isSelfClosing := tagContent[len(tagContent)-1] == '/'
-						tagContent = bytes.TrimSuffix([]byte(tagContent), []byte("/"))
-						splitIndex := bytes.IndexByte(tagContent, ' ')
-						tagName := ""
-						if splitIndex == -1 {
-							splitIndex = 0
-							tagName = string(tagContent)
-						} else {
-							tagName = string(tagContent[:splitIndex])
+						pageName := relDir
+						if pageName == "." {
+							pageName = ""
 						}
-
-						// Node creation logic
-						attributes := parseAttributes(tagContent[splitIndex:])
-						tagType := detectTagType(tagName)
-
-						newNode := &TreeNode{
-							Name:       tagName,
-							Type:       tagType,
-							Attributes: attributes,
+						templateData, err := os.ReadFile(path)
+						if err != nil {
+							fmt.Println(err)
+							Log.Error("Failed to read page template at ", path, ": ", err)
+							return err
 						}
-
-						if len(stack) != 0 {
-							parent := stack[len(stack)-1]
-							parent.Children = append(parent.Children, newNode)
-						} else {
-							fmt.Println("[Error] Could not resolve closing tag ", string(tagContent))
-						}
-						// Only push non-self-closing tags onto the stack
-						if !isSelfClosing && !slices.Contains(SELF_CLOSING_TAGS, tagName) {
-							stack = append(stack, newNode)
+						// Use a key combining the domain and the pageName.
+						routeKey := domain + "/" + pageName
+						fmt.Println("Saving " + routeKey)
+						siteStructure.Routes[routeKey] = ctx.PageRoutes{
+							Name:     pageName,
+							Title:    domain,
+							Layout:   "",
+							Path:     path,
+							Template: string(templateData),
+							MetaTags: ctx.MetaTags{
+								Title:         domain + " title",
+								Description:   "Page description here",
+								OgTitle:       domain + " title",
+								OgDescription: "Page description here",
+								OgType:        "text",
+								OgUrl:         domain,
+							},
 						}
 					}
 				}
-			}
-			continue
-		}
-		// Don't write empty nodes
-		if b != ' ' || (b == ' ' && len(currentContent) > 1) {
-			currentContent = append(currentContent, b)
+				return nil
+			})
+
+			// Handle Partials: walk through the partials directory.
+			filepath.WalkDir(partialsPath, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					Log.Error("Error accessing component path ", path, ": ", err)
+					return err
+				}
+				if !d.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
+					templateData, err := os.ReadFile(path)
+					if err != nil {
+						Log.Error("Failed to read component file at ", path, ": ", err)
+						return err
+					}
+					componentName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
+					siteStructure.Partials[componentName] = string(templateData)
+				}
+				return nil
+			})
+
+			// Handle Layouts: walk through the layouts directory.
+			filepath.Walk(layoutsPath, func(path string, info fs.FileInfo, err error) error {
+				if err != nil {
+					Log.Error("Error accessing layout path ", path, ": ", err)
+					return err
+				}
+				if !info.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
+					templateData, err := os.ReadFile(path)
+					if err != nil {
+						Log.Error("Failed to read layout file at ", path, ": ", err)
+						return err
+					}
+					layoutName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
+					siteStructure.Layouts[layoutName] = string(templateData)
+				}
+				return nil
+			})
+
+			ctx.SiteMap[domain] = siteStructure
 		}
 	}
 
-	return root.Children, errs
+	fmt.Println("SiteMap Build Time: ", time.Since(buildStart))
+	// Log the list of sites for confirmation.
+	var domains []string
+	for domain := range ctx.SiteMap {
+		domains = append(domains, domain)
+	}
+	fmt.Println("Sites: ", domains)
 }

@@ -1,18 +1,27 @@
-# build
+# Build
 build
 tmp
 example/build
 example/tmp
+### test executable
+built-example
 
-# logs
+# Logs
 logs
 *.log
 
-# env
+# Env
 .env
 
-# tests
+# Tests
 *.test.exe
+__debug_*.exe
 
-# other
+# Debugging
+### atomicstyle
+atomicstyle/output.css
+atomicstyle/trie_dump.txt
+
+
+# Other
 .DS_Store

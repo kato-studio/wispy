@@ -1,140 +1,132 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"net/http"
-	"os"
-	"strings"
+	"path/filepath"
 	"time"
 
+	"github.com/kato-studio/wispy/atomicstyle"
 	"github.com/kato-studio/wispy/engine"
+	"github.com/kato-studio/wispy/engine/ctx"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+)
+
+var (
+	colorCyan  = "\033[36m"
+	colorGrey  = "\033[90m"
+	colorReset = "\033[0m"
 )
 
 func main() {
-	const port = ":8090"
-	http.HandleFunc("/html", TestHtml)
-	http.HandleFunc("/tree", TestTreeGen)
-	fmt.Print("Listening on port:", port)
-	http.ListenAndServe(port, nil)
-}
+	const port = ":80"
 
-func TestHtml(res http.ResponseWriter, req *http.Request) {
-	fmt.Println("\n\n\nRunning TestHtml :) ")
-	var Full_time = time.Now()
-	var output []byte = make([]byte, 0)
-	var file []byte = make([]byte, 0)
-	var err error
-	var r engine.Render
+	// Static Middleware
+	ctx.Echo.Static("/public", "./public")
+	// ### Middleware:
+	// Logging and Security
+	ctx.Echo.Use(middleware.Logger())
+	ctx.Echo.Use(middleware.RecoverWithConfig(middleware.RecoverConfig{
+		Skipper:             middleware.DefaultSkipper,
+		StackSize:           4 << 10, // 4 KB
+		DisableStackAll:     false,
+		DisablePrintStack:   false,
+		LogLevel:            0,
+		LogErrorFunc:        nil,
+		DisableErrorHandler: false,
+	}))
 
-	var attFuncMap = make(map[string]engine.AttributeFunc)
-	attFuncMap["class"] = func(name, value string) (bool, string, []error) {
-		fmt.Println(value)
-		return false, "", []error{}
-	}
+	// Compression
+	// app.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+	// 	Level: 5,
+	// }))
 
-	var opFuncMap = make(map[string]engine.OperationFunc)
-	var pageCtx = engine.NewCtx(engine.TemplateCtx{
-		Page: engine.TemplatePageCtx{
-			Title: "ABC Example",
-			Head:  "<link rel=\"stylesheet\" href=\"/css/style.css\">",
-			Meta:  "<meta name=\"description\" content=\"ABC Example\">",
-			Css:   "",
-			Js:    "",
-		},
-		Data: map[string]any{},
+	// Security
+	// app.Use(middleware.Secure())
+	// app.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(12))))
+	// - Upload
+	// app.Use(middleware.BodyLimit("2M"))
+	// Routes
+
+	trie := atomicstyle.BuildFullTrie()
+
+	// brackets syntax
+	ctx.Echo.GET("*", func(c echo.Context) error {
+		domain := c.Request().Host
+		requestPath := c.Request().URL.Path
+		filename := filepath.Base(requestPath)
+
+		// Handle essential site files served from "/"
+		if _, exists := ctx.ESSENTIAL_SERVE[filename]; exists {
+			return c.File("sites/" + domain + "/public/essential" + filename)
+		}
+
+		// Testing
+		startTime := time.Now()
+		data := map[string]any{
+			"domain": c.Request().Host,
+			"title":  "Welcome to " + c.Request().Host,
+			"text":   "go to" + c.Request().Host,
+			"link":   "/" + c.Request().Host,
+			"name":   "john doe",
+			"x":      42,
+			"items":  []string{"apple", "banana", "cherry"},
+			"bar":    "baz",
+		}
+
+		// Look up the site structure for the domain.
+		site, exists := ctx.SiteMap[domain]
+		if !exists {
+			return fmt.Errorf("domain %s not found", domain)
+		}
+
+		page, err := engine.RenderRoute(&site, requestPath, data, c)
+		if err != nil {
+			engine.Log.Error(err)
+			return err
+		}
+
+		// -----------
+		renderTime := time.Now()
+
+		var results = bytes.Buffer{}
+		results.WriteString(page)
+
+		styleTime := time.Now()
+		reader := bytes.NewReader([]byte(page))
+
+		styleExtTime := time.Now()
+		classes := atomicstyle.ExtractClasses(reader)
+
+		styleGenTime := time.Now()
+		css := atomicstyle.GenerateCSS(classes, trie)
+		// -----------
+
+		colorize := func(dur time.Duration) string {
+			return fmt.Sprintf("%s%v%s", colorCyan, dur, colorGrey)
+		}
+
+		fmt.Printf("%s[Render: %s | Style: %s | Extract: %s | CSS: %s | Total: %s]%s\n",
+			colorGrey,
+			colorize(renderTime.Sub(startTime)),
+			colorize(styleTime.Sub(startTime)),
+			colorize(styleExtTime.Sub(styleTime)),
+			colorize(styleGenTime.Sub(styleExtTime)),
+			colorize(time.Since(startTime)),
+			colorReset)
+
+		results.WriteString("<style>" + css + "</style>")
+		//
+		// return c.Render(http.StatusOK, templateName, data)
+		return c.HTMLBlob(http.StatusOK, results.Bytes())
 	})
-	r = engine.InitEngine(pageCtx, attFuncMap, opFuncMap)
-	//
-	fmt.Println("Init Duration: ", time.Since(Full_time))
-	//
-	var jsOutput strings.Builder
-	for _, v := range r.Js {
-		jsOutput.Write(v)
-	}
-	pageCtx.Page.Js += jsOutput.String()
-	//
-	var cssOutput strings.Builder
-	for _, v := range r.Css {
-		cssOutput.Write(v)
-	}
-	pageCtx.Page.Css += cssOutput.String()
-	//
-	var OsRead_Duration = time.Now()
-	file, err = os.ReadFile("./test.html")
-	fmt.Println("os-Read Duration: ", time.Since(OsRead_Duration))
-	// Failed to html file
-	if err != nil {
-		// res.Write([]byte(err.Error()))
-		res.Write([]byte("Failed to read file \n\n"))
-		res.Write([]byte(err.Error()))
-		return
-	}
 
-	Html_time := time.Now()
-	localData := map[string]any{
-		"foo":    "bar",
-		"whitty": "whimsy",
-	}
-	output, errs := r.Render(file, localData, nil, nil, "page")
-	//
-	fmt.Println("Render Duration: ", time.Since(Html_time))
-	//
-	for _, er := range errs {
-		fmt.Println(er)
-	}
-	//
-	fmt.Println("Scan Duration: ", time.Since(Full_time))
-	//
-	// Headers
-	res.Header().Add("content-type", "text/html")
-	// res.Header().Add("content-type", "text/html")
-	// res.Header().Add("content-type", "application/json")
-	res.Write(output)
-}
-
-func TestTreeGen(res http.ResponseWriter, req *http.Request) {
-	fmt.Println("\n\n\nRunning TestTreeGen()")
-	var Full_time = time.Now()
-	var output []byte = make([]byte, 0)
-	var file []byte = make([]byte, 0)
-	var namedImportPath = make(map[string]string)
-	var err error
-	var r engine.Render
-
-	//
-	fmt.Println("Init Duration: ", time.Since(Full_time))
-	var OsRead_Duration = time.Now()
-	file, err = os.ReadFile("./test.html")
-	fmt.Println("os-Read Duration: ", time.Since(OsRead_Duration))
-	// Failed to html file
-	if err != nil {
-		fmt.Println("[Error] ", err.Error())
-		res.Write([]byte("Failed to read file"))
-		res.Write([]byte(err.Error()))
-		return
-	}
-
-	Html_time := time.Now()
-	nodeTree, errs := r.BuildNodeTree(file, "page", namedImportPath)
-
-	//
-	fmt.Println("Tree Gen Duration: ", time.Since(Html_time))
-	// log errors
-	for _, er := range errs {
-		fmt.Println(er.Error())
-	}
-
-	fmt.Println("Scan Duration: (no marshal)", time.Since(Full_time))
-	output, err = json.Marshal(nodeTree)
-	fmt.Println("Scan Duration: (after marshal)", time.Since(Full_time))
-	if err != nil {
-		fmt.Printf(err.Error())
-		res.Write([]byte("500"))
-	}
-
-	//
-	// Headers
-	res.Header().Add("content-type", "application/json")
-	res.Write(output)
+	// Internal System setup
+	// - Initial Build and Start
+	// --- Build
+	engine.BuildSiteMap()
+	// --- Start
+	engine.Log.Fatal(ctx.Echo.Start(port))
 }
