@@ -272,6 +272,8 @@ func addFlexGrid(trie *Trie) {
 		trie.Insert(k, "flex-wrap: "+rule)
 	}
 	// Alignment and justify utilities
+	trie.Insert("justify-left", "justify-content: left;")
+	trie.Insert("justify-right", "justify-content: right;")
 	for k, v := range alignValues {
 		trie.Insert("items-"+k, "align-items: "+v+";")
 		trie.Insert("content-"+k, "align-content: "+v+";")
@@ -316,6 +318,11 @@ func addFlexGrid(trie *Trie) {
 }
 
 func addGridUtilities(trie *Trie) {
+
+	//
+	for i := 0; i <= 12; i++ {
+		trie.Insert(fmt.Sprintf("span-%d", i), fmt.Sprintf("grid-column: span %d", i))
+	}
 	// Special values
 	trie.Insert("row-span-full", "grid-row: 1 / -1;")
 	trie.Insert("row-auto", "grid-row: auto;")
@@ -349,8 +356,10 @@ func addSpacing(trie *Trie) {
 
 // --- Sizing Utilities ---
 func addSizing(trie *Trie) {
+	trie.Insert("w-screen", "width: 100vw;")
 	trie.Insert("min-w-screen", "min-width: 100vw;")
 	trie.Insert("max-w-screen", "max-width: 100vw;")
+	trie.Insert("h-screen", "height: 100vh;")
 	trie.Insert("min-h-screen", "min-height: 100vh;")
 	trie.Insert("max-h-screen", "max-height: 100vh;")
 
@@ -372,8 +381,8 @@ func addSizing(trie *Trie) {
 		// trie.Insert("h-"+val, "height: var(--breakpoint-"+val+");")
 		// trie.Insert("size-"+val, "height: var--breakpoint-"+val+"); "+"width: var(--breakpoint-"+val+");")
 		//
-		trie.Insert("min-w-screen-"+val, "min-width: var(--breakpoint-"+val+");")
-		trie.Insert("max-w-screen-"+val, "max-width: var(--breakpoint-"+val+");")
+		trie.Insert("min-w-screen-"+val, "min-width: var(--container-"+val+");")
+		trie.Insert("max-w-screen-"+val, "max-width: var(--container-"+val+");")
 	}
 }
 

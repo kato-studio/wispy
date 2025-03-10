@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/base-reset.css">
+  <script src="https://cdn.jsdelivr.net/gh/dixonandmoe/rellax@master/rellax.min.js"></script>
+  <title>ODT Agancy</title>
+</head>
+
+<body>
+<!-- ADD LAYOUT! -->
+<style>
+  :root {
+    --pattern-fg: color-mix(in oklab, var(--color-black) 10%, transparent);
+    --afterburn: #C11A7A; 
+    --hyperlime: #A7DF00;
+    --stratosurge: #162AB7; /* old --stratosurge: #2A5DB1; */
+    --voidcore: #1B1510; /* old --voidcore: #0F110D; */
+    --fluxfire: #FF8200;
+    /* https://www.tailwindshades.com/#color=202.50000000000003%2C57.142857142857174%2C94.50980392156862&step-up=0&step-down=2&hue-shift=-1&name=link-water&base-stop=0.5&v=1&overrides=e30%3D */
+    --ghostlight-100: #E9F3F9;
+    --ghostlight-200: #E5F1F8;
+    --ghostlight-300: #DDECF6;
+    --ghostlight-400: #D5E8F4;
+    /* --border-color: color-mix(in lab, var(--stratosurge) 50%, transparent 100%); */
+    /* --border-color: color-mix(in lab, var(--hyperlime) 60%, transparent 100%); */
+    --border-color: var(--voidcore);
+    --pimrary: var(--afterburn);
+    /**/
+    --scrollY: 0;
+  }
+  @font-face {
+    font-family: 'coolvetica'; /*a name to be used later*/
+    src: url('/public/fonts/coolvetica-rg.ttf'); /*URL to font*/
+  }
+  @font-face {
+    font-family: 'UniversLTStd-Black'; /*a name to be used later*/
+    src: url('/public/fonts/UniversLTStd-Black.otf'); /*URL to font*/
+  }
+  @font-face {
+    font-family: 'UniversLTStd'; /*a name to be used later*/
+    src: url('/public/fonts/UniversLTStd.otf'); /*URL to font*/
+  }
+  body {
+    font-family: "UniversLTStd";
+    color: var(--voidcore);
+  }
+  nav {
+    text-transform: uppercase;
+  }
+  .heading,h1,h2,h3 {
+    font-family: "UniversLTStd-black";
+  }
+  .sub-heading {
+    font-family: "coolvetica";
+  }
+  hr {
+    border-color: var(--stratosurge);
+  }
+  #menu a {
+    text-transform: uppercase;
+    font-size: inherit;
+  }
+  .border-boxed {
+    border-block: 1px solid var(--border-color);
+  }
+  .odt-container>div main.page-home section {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-inline: 0.1rem;
+  }
+  .odt-container>.inner, main.page-home section>.inner {
+    width: 100%;
+    margin-inline: auto;
+    border-inline: 1px solid var(--border-color);
+  }
+  .odt-container>.inner::before, main.page-home section>.inner::before {
+    content: "";
+    z-index: -1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("/static/patterns/grit.png");
+    background-repeat: repeat;
+    /* backdrop-filter: opacity(0%); */
+    /* This is mostly intended for prototyping; please download the pattern and re-host for production environments. Thank you! */
+  }
+  .grit::before {
+    content: "";
+    z-index: -1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("/static/patterns/grit.png");
+    background-repeat: repeat;
+    /* backdrop-filter: opacity(0%); */
+    /* This is mostly intended for prototyping; please download the pattern and re-host for production environments. Thank you! */
+  }
+
+  @media (min-width: 640px){ 
+    .odt-container>.inner, main.page-home section {
+      padding-inline: 1rem;
+    }
+  }
+  @media (min-width: 768px){ 
+    .odt-container>.inner, main.page-home section {
+      padding-inline: 2rem;
+    }
+    .odt-container>.inner, main.page-home section>.inner {
+      max-width: 900px;
+    }
+  }
+  @media (min-width: 1280px){ 
+    .odt-container>.inner, main.page-home section {
+      padding-inline: 3rem;
+    }
+    .odt-container>.inner, main.page-home section>.inner {
+      background-color: transparent;
+      max-width: 1300px;
+    }
+  }
+  @media (min-width: 1440px){ 
+    .odt-container>.inner, main.page-home section {
+      padding-inline: 3rem;
+    }
+    .odt-container>.inner, main.page-home section>.inner {
+      background-color: transparent;
+      max-width: 1440px;
+    }
+  }
+  .btn-acc {
+    text-transform: uppercase;
+    font-family: "coolvetica";
+    background: var(--fluxfire);
+    padding-block: calc(var(--spacing)* 2);
+    padding-inline: calc(var(--spacing)* 4);
+    letter-spacing: var(--tracking-widest);
+    border-radius: var(--radius-sm);
+  }
+  /* Desgn / Page Specific Classes */
+  .cursor-fire {
+    cursor: url('/public/img/fire_32.png'), auto;	
+  }
+  .box-on-fire {
+    z-index: -1;
+    background-image: url(/public/img/box-on-fire.webp);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    mask-image: url(/static/masks/jag-paper-mask-horz.svg);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: -10% 0%;
+    opacity: 0.8;
+    transform: translateX(-100px) scale(calc(1 + var(--scrollY) * 0.1 / 100)) rotate(calc(8deg + var(--scrollY) * 1deg / 25));
+  }
+  #folder-container button[data-set-tab] {
+    transform: translateY(-40px);
+  }
+  #folder-container div[data-tab-index] {
+    opacity: 1;
+    filter: blur(0px);
+    transform-origin: center;
+    transform: translate(0px,0px) scaleY(1);
+    transition: opacity 0.1s ease-in-out, transform 0.18s ease-in-out, filter 0.18s ease-in-out;
+  }
+  #folder-container div[data-tab-index].folder-transition {
+    opacity: 0;
+    filter: blur(1px);
+    transform: translate(20%,10%) scaleY(0.8);
+  }
+  /*  */
+  .marquee-text {
+    top: 0;
+    left: 0;
+    background-color:var(--hyperlime);
+  }
+  .marquee-text-track {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 3.8rem;
+    padding-block: 0.5rem;
+    animation: marquee-move-text var(--speed, 10s) linear infinite var(
+      --direction,
+      forwards
+    );
+  }
+  .marquee-text-track p {
+    color: var(--voidcore);
+    border: 2px solid var(--voidcore);
+    border-radius: 999px;
+    padding: 0.4rem 3.5rem;
+  }
+  @keyframes marquee-move-text {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+  }
+</style>
+<script defer>
+  // CSS root
+  var r = document.querySelector(':root');
+  let scrollY = 0;
+  let ticking = false;
+  // https://developer.mozilla.org/en-US/docs/Web/API/Document/scroll_event
+  document.addEventListener("scroll", (event) => {
+    scrollY = window.scrollY;
+    r.style.setProperty("--scrollY", window.scrollY)
+    if(!ticking) {
+      window.requestAnimationFrame(() => {
+        ticking = false;
+      });
+      ticking = true;
+    }
+  })
+  //
+  //
+  document.addEventListener("DOMContentLoaded", () => {
+    const folders = document.querySelectorAll("#folder-container");
+    folders.forEach(folderContainer => {
+      const TabButtons = folderContainer.querySelectorAll("[data-set-tab]")
+      TabButtons.forEach(btn => {
+        btn.addEventListener("click",() => {
+          //@type {string}
+          const tabIndex = folderContainer.getAttribute("data-current-index")
+          const newTabIndex = btn.getAttribute("data-set-tab")
+          if(tabIndex === newTabIndex) return
+          //@type {Element}
+          const currentTabContent = folderContainer.querySelector(`div[data-tab-index="${tabIndex}"]`)
+          //@type {Element}
+          const newTabContent = folderContainer.querySelector(`div[data-tab-index="${newTabIndex}"]`)
+          // handle errors
+          if(!tabIndex || !newTabIndex || !currentTabContent || !newTabContent) {
+            console.error("Error: missing tab index or tab element")
+            console.log("tabIndex", tabIndex, "newTabIndex", newTabIndex, "currentTab", currentTabContent, "newTab", newTabContent)
+            return
+          }
+          // bring under current tab
+          newTabContent.style.setProperty("z-index",30) // standbye index
+          btn.classList.add("folder-transition")
+          currentTabContent.classList.add("folder-transition")
+          //
+          setTimeout(() => {
+            currentTabContent.style.removeProperty("z-index")
+            // move tab from standbye index active tab index (aka: 33)
+            newTabContent.style.setProperty("z-index", 33)
+            folderContainer.setAttribute("data-current-index", newTabIndex)
+            // end transition
+            btn.classList.remove("folder-transition")
+            currentTabContent.classList.remove("folder-transition")
+          }, 180)
+        })
+      });
+    });
+  })
+  //
+</script> 
+<!--  -->
+<!-- <header style="background: var(--hyperlime);" class="">-->
+<header class="max-width: 100vw; overflow: hidden;">
+  <div class="odt-container ">
+    <div class="grid grid-cols-1 md:grid-cols-3 inner">
+      <div class="hidden md:flex items-center">
+        <a class="btn-acc" href="mailto:hello@odt.agency" target="_blank">
+          Contact
+        </a>
+      </div>
+      <div class="flex justify-center">
+        <img src="/public/logo/odt-logo-afterburn.svg" alt="" class="size-36">
+      </div>
+      <nav class="flex items-center justify-center pb-2 md:pb-0 md:justify-right ">
+        <ul style="font-size: 1.1rem;" class="flex gap-x-6 uppercase tracking-widest sub-heading">
+          <li><a href="#">Services</a></li>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</header>
+<main class="page-home" style="max-width: 100vw; overflow: hidden;">
+  <!-- landing -->
+  <section class="border-boxed">
+    <div class="inner grid grid-cols-3 py-22 overflow-hidden">
+      <div class="pt-20 pb-32 span-2">
+        <h1 class="text-7xl pb-1 cursor-fire">Think outside the box. crush the box. light it on fire.</h1>
+      </div>
+      <div 
+        class="span-1 flex items-center justify-center box-on-fire size-120 rounded cursor-fire"
+        aria-label="an image cardboard box burning in a fire on the ground"
+      >
+      <!--  -->
+      </div>
+    </div>
+  </section>
+  <!-- Marquee-text -->
+  <section class="">
+    <div class="inner relative h-20" style="overflow: clip;">
+      <div class="marquee-text" style="--speed: 30s; --direction: reverse;">
+        <div class="marquee-text-track">
+          <p>Flibbertygibbet</p>
+          <p>Snickerdoodle</p>
+          <p>Whatchamacallit</p>
+          <p>Thingamajig</p>
+          <p>Hobnob</p>
+          <p>Fiddlefaddle</p>
+          <p>Gobbledygook</p>
+          <!--  -->
+          <p aria-hidden="true">Flibbertygibbet</p>
+          <p aria-hidden="true">Snickerdoodle</p>
+          <p aria-hidden="true">Whatchamacallit</p>
+          <p aria-hidden="true">Thingamajig</p>
+          <p aria-hidden="true">Hobnob</p>
+          <p aria-hidden="true">Fiddlefaddle</p>
+          <p aria-hidden="true">Gobbledygook</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!--  -->
+  <section class="">
+    <div class="inner pt-30"> </div>
+  </section>
+  <!-- Folders -->
+  <section>
+    <div class="inner">
+      <div class="relative min-h-120 py-18" id="folder-container" data-current-index="3">
+        <div>
+        </div>
+        <!--  -->
+        <div data-tab-index="3" class="absolute w-full" style="z-index: 33;">
+          <button class="ml-4" style="fill: var(--fluxfire);" data-set-tab="3">
+            <svg width="107" height="31" viewBox="0 0 107 31" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M20.7036 1.51946L1.12235 27.5195C0.129768 28.8374 1.07003 30.7227 2.71996 30.7227L104.7 30.7227C106.35 30.7227 107.29 28.8374 106.298 27.5195L86.7164 1.51946C86.3385 1.01773 85.7469 0.722655 85.1188 0.722655L22.3012 0.722652C21.673 0.722652 21.0814 1.01773 20.7036 1.51946Z" />
+            </svg>
+          </button>
+          <div class="p-4 rounded-sm h-90" style="background-color: var(--fluxfire); margin-top: -50px;">
+            hello world fluxfire
+          </div>
+        </div>
+        <!--  -->
+        <div data-tab-index="2" class="absolute w-full">
+          <button class="ml-36" style="fill: var(--hyperlime);" data-set-tab="2">
+            <svg width="107" height="31" viewBox="0 0 107 31" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M20.7036 1.51946L1.12235 27.5195C0.129768 28.8374 1.07003 30.7227 2.71996 30.7227L104.7 30.7227C106.35 30.7227 107.29 28.8374 106.298 27.5195L86.7164 1.51946C86.3385 1.01773 85.7469 0.722655 85.1188 0.722655L22.3012 0.722652C21.673 0.722652 21.0814 1.01773 20.7036 1.51946Z" />
+            </svg>
+          </button>
+          <div class="p-4 rounded-sm h-90" style="background-color: var(--hyperlime); margin-top: -50px;">
+            hello world hyperlime
+          </div>
+        </div>
+        <!--  -->
+        <div data-tab-index="1" class="absolute w-full">
+          <button class="ml-68" style="fill: var(--ghostlight-400);" data-set-tab="1">
+            <svg width="107" height="31" viewBox="0 0 107 31" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M20.7036 1.51946L1.12235 27.5195C0.129768 28.8374 1.07003 30.7227 2.71996 30.7227L104.7 30.7227C106.35 30.7227 107.29 28.8374 106.298 27.5195L86.7164 1.51946C86.3385 1.01773 85.7469 0.722655 85.1188 0.722655L22.3012 0.722652C21.673 0.722652 21.0814 1.01773 20.7036 1.51946Z" />
+            </svg>
+          </button>
+          <div class="p-4 rounded-sm h-90" style="background-color: var(--ghostlight-400); margin-top: -50px;">
+            hello world ghostlight
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!--  -->
+
+  <!--  -->
+  <section>
+    <div class="inner">
+      <h3 class="header pb-4 text-2xl">Are competitors making fun of you?</h3>
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec rutrum interdum velit, quis iaculis dolor. Aliquam
+        tellus
+        urna, dignissim id nibh non, cursus rutrum tortor. Donec eu porttitor felis. Curabitur blandit sapien nec consequat
+        ullamcorper. Quisque at tincidunt orci. Donec non augue eu dui iaculis cursus ac et ligula. Maecenas non purus cursus,
+        fringilla ipsum et, dignissim sem. Donec vitae libero dui. Sed gravida id nunc eget dignissim. Fusce molestie sem vel
+        dolor dictum sodales. Proin ornare lorem at justo vulputate porta. Ut auctor fringilla massa vel pretium. Aenean
+        interdum metus at mauris auctor ornare. Duis sit amet dui ac turpis sollicitudin accumsan sed vitae tortor. In eu
+        condimentum elit, eu rhoncus justo.
+      </p>
+    </div>
+
+  </section>
+  <!-- follow-up A -->
+  <section>
+    <div class="inner">
+      <div class="px-6 md:px-2 md:max-w-screen-7xl mx-auto">
+        <h1 class="text-4xl font-bold mb-4">Fragments of a Concept</h1>
+        <p class="text-lg mb-6">Lorem ipsum</p>
+      </div>
+    </div>
+  </section>
+  <!-- follow-up A -->
+  <section>
+    <div class="inner">
+      <div class="flex flex-row px-6 md:px-2 md:max-w-screen-7xl mx-auto">
+        <div>
+          <h1 class="text-4xl font-bold mb-4">Fragments of a Concept</h1>
+          <p class="text-lg mb-6">Lorem ipsum</p>
+        </div>
+        <div class="flex flex-row justify-center mx-auto">
+          <div style="transform: rotate(-20deg); fill: var(--ghostlight-300);" class="absolute">
+            <svg class="-mb-2 ml-2" width="107" height="31" viewBox="0 0 107 31" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M20.7036 1.51946L1.12235 27.5195C0.129768 28.8374 1.07003 30.7227 2.71996 30.7227L104.7 30.7227C106.35 30.7227 107.29 28.8374 106.298 27.5195L86.7164 1.51946C86.3385 1.01773 85.7469 0.722655 85.1188 0.722655L22.3012 0.722652C21.673 0.722652 21.0814 1.01773 20.7036 1.51946Z"
+                fill="inherit" />
+            </svg>
+            <div style="background: var(--ghostlight-300);" class="rounded-sm h-64 w-64 p-3"></div>
+          </div>
+          <div style="transform: rotate(-7deg); fill: var(--fluxfire);" class="ml-40">
+            <svg class="-mb-2 ml-2" width="107" height="31" viewBox="0 0 107 31" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M20.7036 1.51946L1.12235 27.5195C0.129768 28.8374 1.07003 30.7227 2.71996 30.7227L104.7 30.7227C106.35 30.7227 107.29 28.8374 106.298 27.5195L86.7164 1.51946C86.3385 1.01773 85.7469 0.722655 85.1188 0.722655L22.3012 0.722652C21.673 0.722652 21.0814 1.01773 20.7036 1.51946Z"
+                fill="inherit" />
+            </svg>
+            <div style="background: var(--fluxfire);" class="rounded-sm h-64 w-64 p-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<!-- END OF LAYOUT -->
+<footer class="odt-container">
+  <div class="inner">
+    <hr>
+    <div class="max-w-6xl pt-12 mx-auto flex flex-col md:flex-row justify-between items-center text-center md:text-left">
+      <div class="mb-6 md:mb-0">
+        <h3 class="text-xl font-semibold">One of your amazing taglines</h3>
+      </div>
+      <div>
+        <p>Want your brand not to suck?:</p>
+        <a href="mailto:hello@odt.agency" style="color: var(--afterburn);" class="underline">hello@odt.agency</a>
+      </div>
+      <div class="mt-6 md:mt-0">
+        <p>© 2025 ODT Agency. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+</html>

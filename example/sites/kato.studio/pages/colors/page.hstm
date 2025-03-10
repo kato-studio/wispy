@@ -11,7 +11,8 @@
     --fluxfire: #FF8200;
   }
 </style>
-<div style="background" class="flex items-center justify-center min-h-screen bg-gray-100">
+
+<div style="background: darkgrey;" class="flex items-center justify-center min-h-screen bg-gray-100">
   <div class="grid grid-cols-3 gap-6 p-6">
     <div class="text-center">
       <div class="w-24 h-24" style="background-color: var(--afterburn)"></div>

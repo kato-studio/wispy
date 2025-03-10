@@ -1,0 +1,30 @@
+<header class="bg-white shadow-md">
+    <div class="container mx-auto flex justify-between items-center p-4">
+        <h1 class="text-2xl font-bold">Agency</h1>
+        <button id="menu-btn" class="md:hidden text-2xl">&#9776;</button>
+        <nav>
+            <ul id="menu" class="hidden md:flex space-x-6">
+                <li><a href="#" class="hover:text-blue-500">Home</a></li>
+                <li><a href="#" class="hover:text-blue-500">Services</a></li>
+                <li><a href="#" class="hover:text-blue-500">About</a></li>
+                <li><a href="#" class="hover:text-blue-500">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
+    <ul id="mobile-menu" class="hidden md:hidden text-center bg-white w-full py-4 space-y-4">
+        <li><a href="#" class="block hover:text-blue-500">Home</a></li>
+        <li><a href="#" class="block hover:text-blue-500">Services</a></li>
+        <li><a href="#" class="block hover:text-blue-500">About</a></li>
+        <li><a href="#" class="block hover:text-blue-500">Contact</a></li>
+    </ul>
+</header>
+
+<main class="container mx-auto text-center py-20">
+  {% layout "content" %}
+</main>
+
+<script>
+    document.getElementById('menu-btn').addEventListener('click', function() {
+        document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
+</script>

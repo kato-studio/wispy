@@ -66,6 +66,7 @@ func ProcessRecipe(input string) (string, bool) {
 
 var StdRecipes = map[string]ClassRecipe{
 	// Width and Height
+	"size-":  {Attribute: "height: calc(var(--spacing) * %[1]s); width: calc(var(--spacing) * %[1]s);"},
 	"w-":     {Attribute: "width: calc(var(--spacing) * %s);"},
 	"h-":     {Attribute: "height: calc(var(--spacing) * %s);"},
 	"max-w-": {Attribute: "max-width: calc(var(--spacing) * %s);"},

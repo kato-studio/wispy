@@ -10,6 +10,19 @@ func ResolveFiltersIfAny(ctx *RenderCtx, sb *strings.Builder, tag_contents strin
 	return nil
 }
 
+func FindDelim(ctx *RenderCtx, raw string, pos int) (int, int) {
+	var ds = ctx.Engine.DelimStart
+	var de = ctx.Engine.DelimEnd
+	// Find the next occurrence of a variable or tag start delimiter.
+	next := IndexAt(raw, ds, pos)
+	if next == -1 {
+		return -1, -1
+	}
+	// find bracket closing delim
+	endDelim := IndexAt(raw, de, pos)
+	return next, endDelim
+}
+
 func ResolveTag(ctx *RenderCtx, sb *strings.Builder, pos int, tag_contents, raw string) (new_pos int, errs []error) {
 	tagName, contents, tagNameExists := strings.Cut(tag_contents, " ")
 	if !tagNameExists {

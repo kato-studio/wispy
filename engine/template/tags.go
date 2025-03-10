@@ -6,7 +6,7 @@ import (
 )
 
 // Universal template tag function struct
-type EngineTag struct {
+type TemplateTag struct {
 	Name string
 	// render tag with given context and args, and children if a RequiresClosingTag is set
 	Render func(
@@ -29,7 +29,7 @@ type EngineTag struct {
 }
 
 // Default template tag functions
-var PartialTag = EngineTag{
+var PartialTag = TemplateTag{
 	Name: "partial",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
 
@@ -37,7 +37,7 @@ var PartialTag = EngineTag{
 	},
 }
 
-var IfTag = EngineTag{
+var IfTag = TemplateTag{
 	Name: "if",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
 		endTag := IndexAt(raw, "{% endif %}", pos)
@@ -51,7 +51,7 @@ var IfTag = EngineTag{
 	},
 }
 
-var ForTag = EngineTag{
+var ForTag = TemplateTag{
 	Name: "for",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
 		sb.WriteString("[[" + tag_contents + "]]")
@@ -59,7 +59,7 @@ var ForTag = EngineTag{
 	},
 }
 
-var RootTag = EngineTag{
+var RootTag = TemplateTag{
 	Name: "root",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
 
@@ -67,8 +67,40 @@ var RootTag = EngineTag{
 	},
 }
 
-var DefaultTemplateTags = []EngineTag{
+var LayoutTag = TemplateTag{
+	Name: "layout",
+	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
+		// check if layout has
+		if _, ok := ctx.InternalFlags["layout"]; ok {
+			errs = append(errs, fmt.Errorf("Wanring: layout alread set for this page %s", ":("))
+		} else {
+
+			// startDelim, endDelim := FindDelim(ctx,raw,pos)
+			Render(ctx, sb, raw)
+		}
+
+		return pos, errs
+	},
+}
+
+// var PageTag = TemplateTag{
+// 	Name: "page",
+// 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
+
+// 		return pos, errs
+// 	},
+// }
+
+var DefaultTemplateTags = []TemplateTag{
 	IfTag,
 	ForTag,
 	PartialTag,
+}
+
+var DefaultEngineTags = []TemplateTag{
+	IfTag,
+	ForTag,
+	PartialTag,
+	// PageTag,
+	RootTag,
 }

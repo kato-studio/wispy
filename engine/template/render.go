@@ -8,26 +8,23 @@ import (
 // Render processes the raw template string and writes the rendered output to sb (String Builder)
 func Render(ctx *RenderCtx, sb *strings.Builder, raw string) (errs []error) {
 	// Starting/Opening Delimiter
-	var ds = ctx.Engine.DelimStart
+	// var ds = ctx.Engine.DelimStart
 	var de = ctx.Engine.DelimEnd
 	pos := 0
 	length := len(raw)
 
 	for pos < length {
-		// Find the next occurrence of a variable or tag start delimiter.
-		next := IndexAt(raw, ds, pos)
+		startDelim, endDelim := FindDelim(ctx, raw, pos)
 		// If no more delimiters found, append the remaining text and break.
-		if next >= length || next == -1 {
+		if startDelim >= len(raw) || startDelim == -1 {
 			sb.WriteString(raw[pos:])
 			break
 		}
 		// Append literal text between the current position and the next delimiter.
-		sb.WriteString(raw[pos:next])
-		pos = next
+		sb.WriteString(raw[pos:startDelim])
+		pos = startDelim
 		//
 		//* Core tag logic -----------
-		// find bracket closing delim
-		endDelim := IndexAt(raw, de, pos)
 		if endDelim == -1 {
 			errs = append(errs, fmt.Errorf("missing closing delimit not found %d", pos))
 			break
