@@ -27,9 +27,6 @@ func BeginTest() string {
 	fmt.Println("Generate: ", time.Since(generationTime))
 	fmt.Println("------------------")
 
-	// Output the generated CSS.
-	// fmt.Println(cssOutput)
-
 	return cssOutput
 }
 

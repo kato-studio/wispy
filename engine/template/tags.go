@@ -2,6 +2,8 @@ package template
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -28,11 +30,45 @@ type TemplateTag struct {
 	) (new_pos int, errs []error)
 }
 
-// Default template tag functions
+// PartialTag is a template tag that loads and renders a partial template.
+// It expects the tag_contents to be the name of the partial file (without extension).
+// The partial file should be located in the site's partials directory.
+// The partial file is read, rendered, and the result is written to the string builder.
 var PartialTag = TemplateTag{
 	Name: "partial",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
+		// Extract the partial name from the tag contents
+		partialName := strings.Trim(tag_contents, " \"'")
+		if partialName == "" {
+			errs = append(errs, fmt.Errorf("partial tag is missing the partial name"))
+			return pos, errs
+		}
 
+		// Construct the path to the partial file
+		sitePartialsPath := filepath.Join(ctx.ScopedDirectory, "partials")
+		partialFilePath := filepath.Join(sitePartialsPath, partialName+".hstm")
+
+		// Read the partial file
+		partialContentAsBytes, err := os.ReadFile(partialFilePath)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to read partial file %s: %v", partialFilePath, err))
+			return pos, errs
+		}
+
+		// Render the partial content
+		// Note: This assumes that the partial content is a template that needs to be rendered.
+		// You might need to recursively render the partial content if it contains other tags.
+		var partialSB strings.Builder
+		renderErrs := Render(ctx, &partialSB, string(partialContentAsBytes))
+		if len(renderErrs) > 0 {
+			errs = append(errs, renderErrs...)
+			return pos, errs
+		}
+
+		// Write the rendered partial to the string builder
+		sb.WriteString(partialSB.String())
+
+		// Return the new position (which is the same as the input pos since we didn't move in the raw string)
 		return pos, errs
 	},
 }
@@ -62,34 +98,9 @@ var ForTag = TemplateTag{
 var RootTag = TemplateTag{
 	Name: "root",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-
 		return pos, errs
 	},
 }
-
-var LayoutTag = TemplateTag{
-	Name: "layout",
-	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-		// check if layout has
-		if _, ok := ctx.InternalFlags["layout"]; ok {
-			errs = append(errs, fmt.Errorf("Wanring: layout alread set for this page %s", ":("))
-		} else {
-
-			// startDelim, endDelim := FindDelim(ctx,raw,pos)
-			Render(ctx, sb, raw)
-		}
-
-		return pos, errs
-	},
-}
-
-// var PageTag = TemplateTag{
-// 	Name: "page",
-// 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-
-// 		return pos, errs
-// 	},
-// }
 
 var DefaultTemplateTags = []TemplateTag{
 	IfTag,

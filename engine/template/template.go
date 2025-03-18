@@ -95,24 +95,32 @@ func (eng *TemplateEngine) RegisterFilters(filters []EngineFilter) {
 
 // RenderCtx represents the rendering context.
 type RenderCtx struct {
-	Engine        *TemplateEngine    // Reference to the TemplateEngine.
-	Props         map[string]any     // Props passed to the component.
-	Blocks        map[string]string  // Slots for block content.
-	Data          map[string]any     // Data available during rendering.
-	Partials      *map[string]string // Component like templates
-	InternalFlags map[string]any     // For Tag handlers set flags for reference later in render operation
+	// Reference to the TemplateEngine.
+	Engine *TemplateEngine
+	// Data available during rendering.
+	Data map[string]any
+	// Props passed to the component.
+	Props map[string]any
+	// Slots for block content.
+	Blocks map[string]string
+	// The current directory the template engine should scan for sub folders like partials
+	// This will be set to the site directory if using the wispy-engine but is being set as a string option to allow
+	// few changes to support template engine use outsite of the wispy-engine context
+	ScopedDirectory string
+	// For Tag handlers set flags for reference later in render operation
+	InternalFlags map[string]any
 }
 
-// TODO add methods for changing ctx instead of "allowing" directly setting variables
+// TODO: add methods for changing ctx instead of "allowing" directly setting variables
 // NewRenderCtx creates a new RenderCtx with initialized internal state.
-func NewRenderCtx(engine *TemplateEngine, data map[string]any, partials *map[string]string) *RenderCtx {
+func NewRenderCtx(engine *TemplateEngine, scopedDirectory string, data map[string]any) *RenderCtx {
 	return &RenderCtx{
-		Engine:        engine,
-		Data:          data,
-		Blocks:        make(map[string]string),
-		Props:         make(map[string]any),
-		Partials:      partials,
-		// 
+		Engine:          engine,
+		Data:            data,
+		Blocks:          make(map[string]string),
+		Props:           make(map[string]any),
+		ScopedDirectory: scopedDirectory,
+		//
 		InternalFlags: make(map[string]any, 5),
 	}
 }

@@ -19,8 +19,6 @@
 | <If> ... <If/>
 
 
-
-
 markdown
 # Wispy-Template
 
