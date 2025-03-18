@@ -1,4 +1,0 @@
-<link rel="stylesheet" href="/public/base-reset.css">
-<div class="p-16 m-16 border-px border-blue-400 rounded-md">
-  <h1 class="text-2xl pb-1 font-semibold ">{% .site.domain %}</h1>
-</div>
