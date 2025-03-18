@@ -1,8 +1,11 @@
 # Build
 build
 tmp
-example/build
-example/tmp
+
+# Ignore example directory this is currenlty used for testing
+# Will update to contain well documented minimal example at some point.
+example
+
 ### test executable
 built-example
 
