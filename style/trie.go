@@ -1,4 +1,4 @@
-package atomicstyle
+package style
 
 import (
 	"fmt"

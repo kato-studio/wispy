@@ -1,16 +1,14 @@
-package atomicstyle_test
+package style
 
 import (
 	"fmt"
 	"os"
 	"testing"
-
-	"github.com/kato-studio/wispy/atomicstyle"
 )
 
 func TestWriteTrieNodeToFile(t *testing.T) {
 	// Get the large trie structure
-	atomicTrie := atomicstyle.BuildFullTrie()
+	atomicTrie := BuildFullTrie()
 
 	// Open a file for writing
 	file, dumpErr := os.Create("trie_dump.txt")
@@ -25,7 +23,7 @@ func TestWriteTrieNodeToFile(t *testing.T) {
 	fmt.Println("Trie structure written to trie_dump.txt")
 
 	// Write the CSS rules to a file
-	cssRrr := atomicTrie.WriteCSSToFile("output.css", atomicstyle.BuildSelector)
+	cssRrr := atomicTrie.WriteCSSToFile("output.css", BuildSelector)
 	if cssRrr != nil {
 		fmt.Println("Error writing CSS to file:", cssRrr)
 		return

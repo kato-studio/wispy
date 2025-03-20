@@ -1,8 +1,8 @@
-# Wispy-Template
+# Wispy-Template-Engine
 
 ## Core Goals
 - Plug and play modular
-- No enteral dependencies (excluding other wispy modular packages)
+- No external dependencies (excluding other wispy modular packages)
 - Support for component style "blocks" that can tag props and children
 
 ## Core Requirements

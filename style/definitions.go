@@ -1,5 +1,5 @@
 // here is my golang definitions file that is referenced to generate a trie of class names and their css properties, let's make small changes to use css variables that exist in the theme where it makes sense to do so ```
-package atomicstyle
+package style
 
 import (
 	"fmt"

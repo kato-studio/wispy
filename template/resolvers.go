@@ -14,12 +14,12 @@ func FindDelim(ctx *RenderCtx, raw string, pos int) (int, int) {
 	var ds = ctx.Engine.DelimStart
 	var de = ctx.Engine.DelimEnd
 	// Find the next occurrence of a variable or tag start delimiter.
-	next := IndexAt(raw, ds, pos)
+	next := SafeIndex(raw, ds, pos)
 	if next == -1 {
 		return -1, -1
 	}
 	// find bracket closing delim
-	endDelim := IndexAt(raw, de, pos)
+	endDelim := SafeIndex(raw, de, pos)
 	return next, endDelim
 }
 

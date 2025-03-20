@@ -44,20 +44,15 @@ var PartialTag = TemplateTag{
 			return pos, errs
 		}
 
-		// Construct the path to the partial file
 		sitePartialsPath := filepath.Join(ctx.ScopedDirectory, "partials")
 		partialFilePath := filepath.Join(sitePartialsPath, partialName+".hstm")
 
-		// Read the partial file
 		partialContentAsBytes, err := os.ReadFile(partialFilePath)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to read partial file %s: %v", partialFilePath, err))
 			return pos, errs
 		}
 
-		// Render the partial content
-		// Note: This assumes that the partial content is a template that needs to be rendered.
-		// You might need to recursively render the partial content if it contains other tags.
 		var partialSB strings.Builder
 		renderErrs := Render(ctx, &partialSB, string(partialContentAsBytes))
 		if len(renderErrs) > 0 {
@@ -65,10 +60,9 @@ var PartialTag = TemplateTag{
 			return pos, errs
 		}
 
-		// Write the rendered partial to the string builder
 		sb.WriteString(partialSB.String())
 
-		// Return the new position (which is the same as the input pos since we didn't move in the raw string)
+		// Return the new position (which is the same as the input pos since we didn't handle any content beyond the tag_contents)
 		return pos, errs
 	},
 }
@@ -76,14 +70,15 @@ var PartialTag = TemplateTag{
 var IfTag = TemplateTag{
 	Name: "if",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-		endTag := IndexAt(raw, "{% endif %}", pos)
-		if endTag == -1 {
+		endTagPos, tagLength := SafeIndexAndLenth(raw, "{% endif %}", pos)
+		if endTagPos == -1 {
 			errs = append(errs, fmt.Errorf("could not find end tag for %s", "{% endtag %}"))
 			return pos, errs
 		}
 
-		sb.WriteString("[[" + tag_contents + "]]")
-		return pos, errs
+		sb.WriteString("[#" + tag_contents + "#]")
+		sb.WriteString("[(" + raw[pos:endTagPos-tagLength] + ")]")
+		return endTagPos, errs
 	},
 }
 

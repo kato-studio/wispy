@@ -1,4 +1,4 @@
-package atomicstyle_test
+package style
 
 import (
 	"fmt"
@@ -6,12 +6,10 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"github.com/kato-studio/wispy/atomicstyle"
 )
 
 func BeginTest() string {
-	trie := atomicstyle.BuildFullTrie()
+	trie := BuildFullTrie()
 	input, _ := os.Open("./example.html")
 	defer input.Close()
 
@@ -19,11 +17,11 @@ func BeginTest() string {
 	fmt.Println("------------------")
 	extractTime := time.Now()
 	// Extract unique class names from the HTML.
-	classes := atomicstyle.ExtractClasses(input)
+	classes := ExtractClasses(input)
 	fmt.Println("Extract: ", time.Since(extractTime))
 	generationTime := time.Now()
 	// Generate CSS rules for the extracted classes.
-	cssOutput := atomicstyle.GenerateCSS(classes, trie)
+	cssOutput := GenerateCSS(classes, trie)
 	fmt.Println("Generate: ", time.Since(generationTime))
 	fmt.Println("------------------")
 

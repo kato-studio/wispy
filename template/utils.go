@@ -10,12 +10,20 @@ func ConcatStrings(s ...string) string {
 }
 
 // returns the index of the from current pos, if non-found the pos will be the same upon return
-func IndexAt(s, sep string, pos int) int {
-	idx := strings.Index(s[pos:], sep)
-	if idx > -1 {
-		idx += pos
+func SafeIndex(s, sep string, pos int) (new_pos int) {
+	new_pos = strings.Index(s[pos:], sep)
+	if new_pos > -1 {
+		new_pos += pos
 	}
-	return idx
+	return pos
+}
+
+func SafeIndexAndLenth(s, sep string, pos int) (new_pos int, seperator_lenth int) {
+	new_pos = strings.Index(s[pos:], sep)
+	if new_pos > -1 {
+		new_pos += pos
+	}
+	return pos, len(sep)
 }
 
 // SplitRespectQuotes splits a string by spaces while respecting quoted substrings and removing empty values.

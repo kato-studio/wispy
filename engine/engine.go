@@ -3,12 +3,12 @@ package engine
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/kato-studio/wispy/engine/template"
-	"github.com/labstack/echo/v4"
+	"github.com/kato-studio/wispy/template"
 )
 
 const (
@@ -23,6 +23,7 @@ const (
 )
 
 var SiteMap = map[string]*SiteStructure{}
+var Logger *slog.JSONHandler
 
 /*
 =================================================================
@@ -33,30 +34,25 @@ func init() {
 	// -------------
 	// Setup Logger
 	// -------------
-	logFile, err := os.OpenFile("application.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(err)
-	}
-	defer logFile.Close()
-
-	var logLevel = new(slog.LevelVar)
-
-	logger := slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: logLevel})
-	slog.SetDefault(slog.New(logger))
-	logLevel.Set(slog.LevelDebug)
+	// logFile, err := os.OpenFile("application.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer logFile.Close()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 }
 
 // RenderRoute renders a page route for a given domain and page name.
 // It looks up the page in the site's route map
 // The route key is assumed to be in the form "domain/pageName" (e.g. "example.com/about").
-func RenderRoute(site *SiteStructure, requestPath string, data map[string]any, c echo.Context) (output string, err error) {
+func RenderRoute(site *SiteStructure, requestPath string, data map[string]any, w http.ResponseWriter, r *http.Request) (output string, err error) {
 	// Construct the route key. If route is empty, key becomes "domain/".
 	routeKey := site.Domain + requestPath
 	route, exists := site.Routes[routeKey]
 	if !exists {
 		return "", fmt.Errorf("route %s not found", routeKey)
 	}
-
 	// Create the render context and inject it into the data.
 	if data == nil {
 		data = make(map[string]any)
@@ -86,7 +82,7 @@ func RenderRoute(site *SiteStructure, requestPath string, data map[string]any, c
 	var sb strings.Builder
 	renderErrors := template.Render(ctx, &sb, string(templateAsBytes))
 
-	//TODO only log errors if debug is active
+	// TODO: only log errors if debug is active
 	for ei, err := range renderErrors {
 		if ei == 0 {
 			fmt.Println(colorGrey + "-------------------" + colorReset)
