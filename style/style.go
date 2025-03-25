@@ -162,8 +162,14 @@ func GenerateRuleForClass(class string, trie *Trie) (rule string, mediaQuery str
 	return "", "", false
 }
 
+var falbackTrie = NewTrie()
+
 // GenerateCSS accepts a set of class names and the trie, returning generated CSS.
 func GenerateCSS(classes []string, trie *Trie) string {
+	if trie == nil {
+		trie = falbackTrie
+	}
+
 	var buffer bytes.Buffer
 	var defaultRules []string
 	mediaQueryRules := make(map[string][]string)

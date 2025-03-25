@@ -5,6 +5,7 @@ tmp
 # Ignore example directory this is currenlty used for testing
 # Will update to contain well documented minimal example at some point.
 example
+run-example.sh
 
 ### test executable
 built-example
@@ -28,3 +29,4 @@ atomicstyle/trie_dump.txt
 
 # Other
 .DS_Store
+

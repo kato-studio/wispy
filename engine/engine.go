@@ -58,10 +58,8 @@ func RenderRoute(site *SiteStructure, requestPath string, data map[string]any, w
 		data = make(map[string]any)
 	}
 
-	//!---  Testing:
 	// Optionally, inject additional values such as the page title.
 	data["title"] = route.Title
-	//! ---
 
 	// Create a new template engine.
 	engine := template.NewTemplateEngine()
@@ -70,14 +68,12 @@ func RenderRoute(site *SiteStructure, requestPath string, data map[string]any, w
 	scopedDirectory := filepath.Join(Wispy.SITE_DIR, site.Domain)
 	ctx := template.NewRenderCtx(engine, scopedDirectory, data)
 
-	//!---  Testing: read file on render vs cache template file on site build.
 	templateAsBytes, err := os.ReadFile(route.Path)
 	if err != nil {
 		fmt.Println(err)
 		slog.Error("Failed to read page template at ", route.Path, ": ", err)
 		return "", fmt.Errorf("route %s not found", routeKey)
 	}
-	//! ---
 
 	var sb strings.Builder
 	renderErrors := template.Render(ctx, &sb, string(templateAsBytes))

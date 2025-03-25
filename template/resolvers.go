@@ -2,11 +2,43 @@ package template
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 )
 
 func ResolveFiltersIfAny(ctx *RenderCtx, sb *strings.Builder, tag_contents string) error {
-	sb.WriteString("(" + tag_contents + ")")
+	// sb.WriteString("(" + tag_contents + ")")
+	parts := strings.Split(tag_contents, " | ")
+	lenParts := len(parts)
+	//
+	val, valErr := ResolveVariable(ctx, parts[0])
+	if valErr != nil {
+		return valErr
+	}
+	if lenParts == 1 {
+		if str, ok := val.(string); ok {
+			sb.WriteString(str)
+		} else {
+			sb.WriteString(stringify(val))
+		}
+	} else if lenParts > 1 {
+		var pipeValue any = val
+		var err error
+		for i := 1; i < lenParts; i++ {
+			filterSec := parts[i]
+			filterParts := SplitRespectQuotes(filterSec)
+			filterName := filterParts[1]
+			//
+			if filter, ok := ctx.Engine.FilterMap[filterName]; ok {
+				pipeValue, err = filter.Handler(pipeValue, filterParts)
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("no filter found %s", filterName)
+			}
+		}
+	}
 	return nil
 }
 
@@ -14,12 +46,12 @@ func FindDelim(ctx *RenderCtx, raw string, pos int) (int, int) {
 	var ds = ctx.Engine.DelimStart
 	var de = ctx.Engine.DelimEnd
 	// Find the next occurrence of a variable or tag start delimiter.
-	next := SafeIndex(raw, ds, pos)
+	next := SeekIndex(raw, ds, pos)
 	if next == -1 {
 		return -1, -1
 	}
 	// find bracket closing delim
-	endDelim := SafeIndex(raw, de, pos)
+	endDelim := SeekIndex(raw, de, pos)
 	return next, endDelim
 }
 
@@ -41,56 +73,17 @@ func ResolveTag(ctx *RenderCtx, sb *strings.Builder, pos int, tag_contents, raw 
 // resolveVariable resolves a variable reference from the RenderCtx's Props or Data maps.
 func ResolveVariable(ctx *RenderCtx, path string) (any, error) {
 	parts := strings.Split(path, ".")
-	var current any
+	var current any = maps.Clone(ctx.Props)
 	// try to resolve the variable from Props.
-	current = ctx.Props
-	for _, part := range parts {
-		if part == "" {
-			continue // Skip empty parts (e.g., leading dot).
-		}
-		// Check if the current value is a map.
-		if m, ok := current.(map[string]any); ok {
-			if val, exists := m[part]; exists {
-				current = val
-			} else {
-				// Variable not found in Props, fall back to Data.
-				current = nil
-				break
-			}
-		} else {
-			// Invalid path in Props, fall back to Data.
-			current = nil
-			break
-		}
-	}
+	current = ParseDataPath(parts, current)
 	// If the variable was not found in Props, try to resolve it from Data.
 	if current == nil {
 		current = ctx.Data
-		for _, part := range parts {
-			if part == "" {
-				continue // Skip empty parts (e.g., leading dot).
-			}
-			// Check if the current value is a map.
-			if m, ok := current.(map[string]any); ok {
-				if val, exists := m[part]; exists {
-					current = val
-				} else {
-					// Variable not found in Data.
-					fmt.Printf("variable not found: %s\n", part)
-					return "", nil
-				}
-			} else {
-				// Invalid path in Data.
-				return "", fmt.Errorf("invalid variable path: %s", path)
-			}
-		}
+		current = ParseDataPath(parts, current)
+	}
+	// If it's still we know there was no data either so we return an error
+	if current == nil {
+		return "", fmt.Errorf("invalid variable path: %s", path)
 	}
 	return current, nil
-}
-
-// evaluateCondition evaluates a condition string (e.g., "x > 5").
-func ResolveCondition(ctx *RenderCtx, condition string) (val bool, errs []error) {
-	// Simple (for demonstration purposes)
-	// TODO:  condition evaluation I.E. {{ if eq 1 1 }}
-	return
 }
