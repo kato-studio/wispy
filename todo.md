@@ -12,7 +12,7 @@
 ## Wispy Template  
 - [X] **:** [FEATURE] Condition evaluation (e.g., `{{ if .Title }}` or `{{ if .Title > 10 }}`) 
 -   -   new function `ResolveCondition`
-- [X] **:** [FEATURE] Condition evaluation (e.g., `{{ each .item in ["key", "value"] }}` or `{{ each .item in .Items }}`)
+- [X] **:** [FEATURE] Condition evaluation (e.g., `{{ each item in ["key", "value"] }}` or `{{ each item in .Items }}`)
 - [X] **:** [BUG/FIX] Variable which are int's, bools, or floats not being resolved as strings when templating
 -   -   new function `stringify`
 - [X] **:** [BUG/FIX] Items not being properly assigned to `ctx.Props` and then fail to resolve
