@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -58,11 +59,29 @@ func RenderRoute(site *SiteStructure, requestPath string, data map[string]any, w
 		data = make(map[string]any)
 	}
 
-	// Optionally, inject additional values such as the page title.
 	data["title"] = route.Title
 
 	// Create a new template engine.
 	engine := template.NewTemplateEngine()
+
+	// Read and merge JSON data if the file exist
+	jsonPath := filepath.Join(filepath.Dir(route.Path), "data_en.json")
+	if _, err := os.Stat(jsonPath); err == nil {
+		jsonAsBytes, err := os.ReadFile(jsonPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to read JSON file: %w", err)
+		}
+		var jsonData map[string]any
+		if err := json.Unmarshal(jsonAsBytes, &jsonData); err != nil {
+			return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
+		}
+		// Merge JSON data with existing data
+		for k, v := range jsonData {
+			data[k] = v
+		}
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("failed to check JSON file: %w", err)
+	}
 
 	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
 	scopedDirectory := filepath.Join(Wispy.SITE_DIR, site.Domain)
