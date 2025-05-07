@@ -20,7 +20,7 @@ type WispyConfig struct {
 
 // EngineCtx is the engine context which holds site mappings and configuration.
 var Wispy = &WispyConfig{
-	SITE_DIR:         "sites",
+	SITE_DIR:         "./sites",
 	PAGE_FILE_NAME:   "page",
 	FILE_EXT:         ".hstm",
 	SITE_CONFIG_NAME: "config.toml",

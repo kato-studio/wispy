@@ -29,7 +29,7 @@ func NewTemplateEngine() *TemplateEngine {
 	}
 	eng.GenCutSet(" \n\t") // generate initial CutSet whitespace
 
-	eng.RegisterTags(DefaultTemplateTags)
+	eng.RegisterTags(DefaultEngineTags)
 	eng.RegisterFilters(DefaultTemplateFilters)
 
 	return eng

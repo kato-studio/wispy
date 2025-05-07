@@ -131,7 +131,7 @@ func BuildSiteMap() {
 			SiteMap[domain] = &siteStructure
 		}
 	}
-
+	//
 	fmt.Println("SiteMap Build Time: ", time.Since(buildStart))
 	// Log the list of sites for confirmation.
 	var domains []string

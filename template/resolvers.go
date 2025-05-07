@@ -57,7 +57,7 @@ func FindDelim(ctx *RenderCtx, raw string, pos int) (int, int) {
 
 func ResolveTag(ctx *RenderCtx, sb *strings.Builder, pos int, tag_contents, raw string) (new_pos int, errs []error) {
 	tagName, contents, tagNameExists := strings.Cut(tag_contents, " ")
-	if !tagNameExists {
+	if !tagNameExists && len(tagName) < 3 {
 		return pos, []error{fmt.Errorf("could not resolve tag name in \"" + tag_contents + "\"")}
 	}
 

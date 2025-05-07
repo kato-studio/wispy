@@ -93,7 +93,7 @@ func RenderRoute(site *SiteStructure, requestPath string, data map[string]any, w
 		slog.Error("Failed to read page template at ", route.Path, ": ", err)
 		return "", fmt.Errorf("route %s not found", routeKey)
 	}
-
+	//
 	var sb strings.Builder
 	renderErrors := template.Render(ctx, &sb, string(templateAsBytes))
 

@@ -32,6 +32,10 @@ type TemplateTag struct {
 	) (new_pos int, errs []error)
 }
 
+func delimWrap(ctx *RenderCtx, value string) string {
+	return strings.Join([]string{ctx.Engine.DelimStart, value, ctx.Engine.DelimEnd}, " ")
+}
+
 // PartialTag is a template tag that loads and renders a partial template.
 // It expects the tag_contents to be the name of the partial file (without extension).
 // The partial file should be located in the site's partials directory.
@@ -73,9 +77,10 @@ var PartialTag = TemplateTag{
 var IfTag = TemplateTag{
 	Name: "if",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-		endTagStart, endTagLength := SeekIndexAndLenth(raw, "{% endif %}", pos)
+		endTag := delimWrap(ctx, "endif")
+		endTagStart, endTagLength := SeekIndexAndLenth(raw, endTag, pos)
 		if endTagStart == -1 {
-			errs = append(errs, fmt.Errorf("could not find end tag for %s", "{% endif %}"))
+			errs = append(errs, fmt.Errorf("could not find end tag for %s", endTag))
 			return pos, errs
 		}
 		content := raw[pos:endTagStart]
@@ -92,11 +97,27 @@ var IfTag = TemplateTag{
 	},
 }
 
+// used to skip content that should not be parsed
+var CommentTag = TemplateTag{
+	Name: "comment",
+	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
+		endTag := delimWrap(ctx, "endcomment")
+		endTagStart, endTagLength := SeekIndexAndLenth(raw, endTag, pos)
+		if endTagStart == -1 {
+			errs = append(errs, fmt.Errorf("could not find end tag for %s", endTag))
+			return pos, errs
+		}
+		newEndPos := endTagStart + endTagLength
+
+		return newEndPos, errs
+	},
+}
+
 // Render
 var EachTag = TemplateTag{
 	Name: "each",
 	Render: func(ctx *RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-		endTag := ctx.Engine.DelimStart + " endeach " + ctx.Engine.DelimEnd
+		endTag := delimWrap(ctx, "endeach")
 		openingOfTag := ctx.Engine.DelimStart + " each "
 		endTagStart, endTagLength := SeedClosingHandleNested(raw, endTag, openingOfTag, pos)
 		if endTagStart == -1 {
@@ -130,7 +151,6 @@ var EachTag = TemplateTag{
 				// Clone parent data and add loop variable
 				newData := maps.Clone(ctx.Data)
 				newData[loopVar] = collValue.Index(i).Interface() // Store in Data
-
 				newCtx := &RenderCtx{
 					Engine:          ctx.Engine,
 					Data:            newData, // Use cloned data
@@ -151,7 +171,6 @@ var EachTag = TemplateTag{
 			for iter.Next() {
 				newData := maps.Clone(ctx.Data)
 				newData[loopVar] = iter.Value().Interface() // Store in Data
-
 				newCtx := &RenderCtx{
 					Engine:          ctx.Engine,
 					Data:            newData,
@@ -178,10 +197,12 @@ var DefaultTemplateTags = []TemplateTag{
 	IfTag,
 	EachTag,
 	PartialTag,
+	CommentTag,
 }
 
 var DefaultEngineTags = []TemplateTag{
 	IfTag,
 	EachTag,
 	PartialTag,
+	CommentTag,
 }

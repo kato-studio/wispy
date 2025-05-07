@@ -11,7 +11,7 @@ func ResolveCondition(ctx *RenderCtx, condition string) (val bool, errs []error)
 	values := SplitRespectQuotes(condition)
 	vlen := len(values)
 	if vlen == 0 {
-		return false, []error{fmt.Errorf("no conditions within %s statement", "if")}
+		return false, []error{fmt.Errorf("no conditions within \"%s\" statement:", condition)}
 	}
 
 	// first value
