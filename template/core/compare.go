@@ -1,13 +1,15 @@
-package template
+package core
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/kato-studio/wispy/template/structure"
 )
 
 // ResolveCondition evaluates a condition string (e.g., "x > 5").
-func ResolveCondition(ctx *RenderCtx, condition string) (val bool, errs []error) {
+func ResolveCondition(ctx *structure.RenderCtx, condition string) (val bool, errs []error) {
 	values := SplitRespectQuotes(condition)
 	vlen := len(values)
 	if vlen == 0 {
@@ -64,7 +66,7 @@ func ResolveCondition(ctx *RenderCtx, condition string) (val bool, errs []error)
 	return value, nil
 }
 
-func ResolveTruthy(ctx *RenderCtx, expr string) (bool, error) {
+func ResolveTruthy(ctx *structure.RenderCtx, expr string) (bool, error) {
 	value, err := ResolveValue(ctx, expr)
 	if err != nil {
 		return false, err

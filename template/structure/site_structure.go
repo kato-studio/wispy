@@ -1,14 +1,4 @@
-package engine
-
-// NewSiteStructure creates a new SiteStructure with initialized maps.
-func NewSiteStructure(domain string) SiteStructure {
-	return SiteStructure{
-		Domain:   domain,
-		Routes:   make(map[string]PageRoutes),
-		Layouts:  make(map[string]string),
-		Partials: make(map[string]string),
-	}
-}
+package structure
 
 // WispyConfig holds configuration options for the engine.
 type WispyConfig struct {

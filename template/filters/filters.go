@@ -1,18 +1,22 @@
-package template
+package filters
 
 import (
 	"strconv"
 	"strings"
+
+	"github.com/kato-studio/wispy/template/structure"
 )
 
-// Universal template data filters function struct
-type EngineFilter struct {
-	Name    string
-	Handler func(pipedValue any, args []string) (value any, err error)
-}
+// // Universal template data filters function struct
+//
+//	type TemplateFilter struct {
+//		Name    string
+//		Handler func(pipedValue any, args []string) (value any, err error)
+//	}
+type TemplateFilter = structure.TemplateFilter
 
 // Default template data filters functions
-var UpcaseFilter = EngineFilter{
+var UpcaseFilter = TemplateFilter{
 	Name: "upcase",
 	Handler: func(pipedValue any, args []string) (value any, err error) {
 		if s, ok := pipedValue.(string); ok {
@@ -22,7 +26,7 @@ var UpcaseFilter = EngineFilter{
 	},
 }
 
-var DowncaseFilter = EngineFilter{
+var DowncaseFilter = TemplateFilter{
 	Name: "downcase",
 	Handler: func(pipedValue any, args []string) (value any, err error) {
 		if s, ok := pipedValue.(string); ok {
@@ -32,7 +36,7 @@ var DowncaseFilter = EngineFilter{
 	},
 }
 
-var CapitalizeFilter = EngineFilter{
+var CapitalizeFilter = TemplateFilter{
 	Name: "capitalize",
 	Handler: func(pipedValue any, args []string) (value any, err error) {
 		if s, ok := pipedValue.(string); ok && len(s) > 0 {
@@ -42,7 +46,7 @@ var CapitalizeFilter = EngineFilter{
 	},
 }
 
-var StripFilter = EngineFilter{
+var StripFilter = TemplateFilter{
 	Name: "strip",
 	Handler: func(pipedValue any, args []string) (value any, err error) {
 		if s, ok := pipedValue.(string); ok {
@@ -52,7 +56,7 @@ var StripFilter = EngineFilter{
 	},
 }
 
-var TruncateFilter = EngineFilter{
+var TruncateFilter = TemplateFilter{
 	Name: "truncate",
 	Handler: func(pipedValue any, args []string) (value any, err error) {
 		if s, ok := pipedValue.(string); ok && len(args) > 0 {
@@ -64,7 +68,7 @@ var TruncateFilter = EngineFilter{
 	},
 }
 
-var SliceFilter = EngineFilter{
+var SliceFilter = TemplateFilter{
 	Name: "slice",
 	Handler: func(pipedValue any, args []string) (value any, err error) {
 		delimiter := ","
@@ -81,14 +85,4 @@ var SliceFilter = EngineFilter{
 		}
 		return pipedValue, nil
 	},
-}
-
-// Register default filters.
-var DefaultTemplateFilters = []EngineFilter{
-	UpcaseFilter,
-	DowncaseFilter,
-	CapitalizeFilter,
-	StripFilter,
-	TruncateFilter,
-	SliceFilter,
 }

@@ -1,16 +1,13 @@
-package template
+package core
 
 import (
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
-)
 
-// concatenate strings
-func ConcatStrings(s ...string) string {
-	return strings.Join(s, "")
-}
+	"github.com/kato-studio/wispy/template/structure"
+)
 
 // returns the index of the from current pos, if non-found the pos will be the same upon return
 func SeekIndex(raw, sep string, pos int) (new_pos int) {
@@ -21,7 +18,7 @@ func SeekIndex(raw, sep string, pos int) (new_pos int) {
 	return new_pos
 }
 
-func SeekIndexAndLenth(raw, sep string, pos int) (new_pos int, seperator_lenth int) {
+func SeekIndexAndLength(raw, sep string, pos int) (new_pos int, seperator_lenth int) {
 	new_pos = strings.Index(raw[pos:], sep)
 	if new_pos > -1 {
 		new_pos += pos
@@ -30,7 +27,7 @@ func SeekIndexAndLenth(raw, sep string, pos int) (new_pos int, seperator_lenth i
 }
 
 // SafeIndexAndLength finds the index of a closing tag while ensuring it corresponds to an opening tag
-func SeedClosingHandleNested(raw, closingTag, openingTag string, pos int) (newPos int, separatorLength int) {
+func SeekClosingHandleNested(raw, closingTag, openingTag string, pos int) (newPos int, separatorLength int) {
 	openCount := 0
 	newPos = pos
 	separatorLength = len(closingTag)
@@ -91,7 +88,7 @@ func SplitRespectQuotes(s string) []string {
 	return result
 }
 
-func ResolveValue(ctx *RenderCtx, expr string) (any, error) {
+func ResolveValue(ctx *structure.RenderCtx, expr string) (any, error) {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {
 		return nil, fmt.Errorf("empty expression")

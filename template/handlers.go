@@ -1,4 +1,4 @@
-package handlers
+package template
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/kato-studio/wispy/engine"
+	"github.com/kato-studio/wispy/template/core"
 )
 
 // Define some example colors for logging
@@ -23,17 +23,17 @@ func SitePublicFolderHnadler(w http.ResponseWriter, r *http.Request) {
 	domain := r.Host
 	requestPath := r.URL.Path
 	filename := filepath.Base(requestPath)
-	if _, exists := engine.ESSENTIAL_SERVE[filename]; exists {
-		targetFile := filepath.Join(engine.Wispy.SITE_DIR, domain, "public/essential", filename)
+	if _, exists := core.ESSENTIAL_SERVE[filename]; exists {
+		targetFile := filepath.Join(Wispy.SITE_DIR, domain, "public/essential", filename)
 		// Serve the essential file
 		http.ServeFile(w, r, targetFile)
 		return
 	}
 
 	// Serve public assets
-	// targetFile := filepath.Join(engine.Wispy.SITE_DIR, domain, requestPath)
+	// targetFile := filepath.Join(core.Wispy.SITE_DIR, domain, requestPath)
 	// http.StripPrefix("/public/", http.FileServer(http.Dir("static")))
-	targetFile := filepath.Join(engine.Wispy.SITE_DIR, domain, requestPath)
+	targetFile := filepath.Join(Wispy.SITE_DIR, domain, requestPath)
 	fmt.Println(targetFile)
 	http.ServeFile(w, r, targetFile)
 	// if _, err := os.Stat(targetFile); err != nil {
@@ -66,20 +66,30 @@ func SiteRouteHandler(w http.ResponseWriter, r *http.Request) {
 	//!---------------------------
 
 	// Look up the site structure for the domain
-	site, exists := engine.SiteMap[domain]
+	site, exists := SiteMap[domain]
 	if !exists {
 		http.Error(w, fmt.Sprintf("domain %s not found", domain), http.StatusNotFound)
 		return
 	}
 
 	// -----------
-	data := map[string]any{}
+	data := map[string]any{
+		"req": map[string]any{
+			"header":     r.Header,
+			"cookies":    r.Cookies(),
+			"GetCookie":  r.Cookie,
+			"url":        r.URL,
+			"pattern":    r.Pattern,
+			"referer":    r.Referer(),
+			"user-agent": r.UserAgent(),
+		},
+	}
 	// -----------
 
 	// Render the route
-	page, err := engine.RenderRoute(site, requestPath, data, w, r)
+	page, err := RenderRoute(site, requestPath, data, w, r)
 	if err != nil {
-		slog.Error("Rendering Route using \"RenderRoute()\""+err.Error(), nil)
+		slog.Error("Rendering Route using \"RenderRoute()\"" + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

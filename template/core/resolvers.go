@@ -1,12 +1,14 @@
-package template
+package core
 
 import (
 	"fmt"
 	"maps"
 	"strings"
+
+	"github.com/kato-studio/wispy/template/structure"
 )
 
-func ResolveFiltersIfAny(ctx *RenderCtx, sb *strings.Builder, tag_contents string) error {
+func ResolveFiltersIfAny(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents string) error {
 	// sb.WriteString("(" + tag_contents + ")")
 	parts := strings.Split(tag_contents, " | ")
 	lenParts := len(parts)
@@ -42,7 +44,7 @@ func ResolveFiltersIfAny(ctx *RenderCtx, sb *strings.Builder, tag_contents strin
 	return nil
 }
 
-func FindDelim(ctx *RenderCtx, raw string, pos int) (int, int) {
+func FindDelim(ctx *structure.RenderCtx, raw string, pos int) (int, int) {
 	var ds = ctx.Engine.DelimStart
 	var de = ctx.Engine.DelimEnd
 	// Find the next occurrence of a variable or tag start delimiter.
@@ -55,7 +57,7 @@ func FindDelim(ctx *RenderCtx, raw string, pos int) (int, int) {
 	return next, endDelim
 }
 
-func ResolveTag(ctx *RenderCtx, sb *strings.Builder, pos int, tag_contents, raw string) (new_pos int, errs []error) {
+func ResolveTag(ctx *structure.RenderCtx, sb *strings.Builder, pos int, tag_contents, raw string) (new_pos int, errs []error) {
 	tagName, contents, tagNameExists := strings.Cut(tag_contents, " ")
 	if !tagNameExists && len(tagName) < 3 {
 		return pos, []error{fmt.Errorf("could not resolve tag name in \"" + tag_contents + "\"")}
@@ -71,7 +73,7 @@ func ResolveTag(ctx *RenderCtx, sb *strings.Builder, pos int, tag_contents, raw 
 }
 
 // resolveVariable resolves a variable reference from the RenderCtx's Props or Data maps.
-func ResolveVariable(ctx *RenderCtx, path string) (any, error) {
+func ResolveVariable(ctx *structure.RenderCtx, path string) (any, error) {
 	parts := strings.Split(path, ".")
 	var current any = maps.Clone(ctx.Props)
 	// try to resolve the variable from Props.

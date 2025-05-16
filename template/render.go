@@ -1,51 +1,101 @@
 package template
 
 import (
+	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/kato-studio/wispy/template/structure"
 )
 
-// Render processes the raw template string and writes the rendered output to sb (String Builder)
-func Render(ctx *RenderCtx, sb *strings.Builder, raw string) (errs []error) {
-	// Starting/Opening Delimiter
-	// var ds = ctx.Engine.DelimStart
-	var de = ctx.Engine.DelimEnd
-	pos := 0
-	length := len(raw)
+const (
+	// colorReset = "\033[0m"
+	// colorBlue    = "\033[34m"
+	// colorGreen   = "\033[32m"
+	// colorYellow  = "\033[33m"
+	// colorMagenta = "\033[35m"
+	// colorCyan    = "\033[36m"
+	colorRed = "\033[31m"
+	// colorGrey = "\033[90m"
+)
 
-	for pos < length {
-		startDelim, endDelim := FindDelim(ctx, raw, pos)
-		// If no more delimiters found, append the remaining text and break.
-		if startDelim >= len(raw) || startDelim == -1 {
-			sb.WriteString(raw[pos:])
-			break
+// RenderRoute renders a page route for a given domain and page name.
+// It looks up the page in the site's route map
+// The route key is assumed to be in the form "domain/pageName" (e.g. "example.com/about").
+func RenderRoute(site *structure.SiteStructure, requestPath string, data map[string]any, w http.ResponseWriter, r *http.Request) (output string, err error) {
+	// Construct the route key. If route is empty, key becomes "domain/".
+	routeKey := site.Domain + requestPath
+	route, exists := site.Routes[routeKey]
+	if !exists {
+		return "", fmt.Errorf("route %s not found", routeKey)
+	}
+	// Create the render context and inject it into the data.
+	if data == nil {
+		data = make(map[string]any)
+	}
+
+	data = map[string]any{}
+
+	// Read and merge JSON data if the file exist
+	jsonPath := filepath.Join(filepath.Dir(route.Path), "data_en.json")
+	if _, err := os.Stat(jsonPath); err == nil {
+		jsonAsBytes, err := os.ReadFile(jsonPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to read JSON file: %w", err)
 		}
-		// Append literal text between the current position and the next delimiter.
-		sb.WriteString(raw[pos:startDelim])
-		pos = startDelim
-		//
-		//* Core tag logic -----------
-		if endDelim == -1 {
-			errs = append(errs, fmt.Errorf("missing closing delimit not found %d", pos))
-			break
-		} else {
-			endDelim = endDelim + len(de)
+		var jsonData map[string]any
+		if err := json.Unmarshal(jsonAsBytes, &jsonData); err != nil {
+			return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
 		}
-		// Extract the contents of the variable.
-		tag_contents := CleanTemplateTag(ctx, raw[pos:endDelim])
-		if strings.HasPrefix(tag_contents, ".") {
-			if err := ResolveFiltersIfAny(ctx, sb, tag_contents); err != nil {
-				errs = append(errs, err)
-			}
-			pos = endDelim
-		} else {
-			var tagErrs []error
-			pos = endDelim
-			pos, tagErrs = ResolveTag(ctx, sb, pos, tag_contents, raw)
-			if len(tagErrs) > 0 {
-				errs = append(errs, tagErrs...)
-			}
+		// Merge JSON data with existing data
+		for k, v := range jsonData {
+			data[k] = v
+		}
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("failed to check JSON file: %w", err)
+	}
+
+	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
+	scopedDirectory := filepath.Join(Wispy.SITE_DIR, site.Domain)
+	// ctx := template.NewRenderCtx(engine, scopedDirectory, data)
+	engine := StartDefaultEngine()
+	ctx := engine.InitCtx(scopedDirectory, data)
+
+	templateAsBytes, err := os.ReadFile(route.Path)
+	if err != nil {
+		fmt.Println(err)
+		slog.Error("Failed to read page template at ", route.Path, ": ", err)
+		return "", fmt.Errorf("route %s not found", routeKey)
+	}
+	//
+	var sb strings.Builder
+	renderErrors := Render(ctx, &sb, string(templateAsBytes))
+
+	// TODO: only log errors if debug is active
+	for ei, err := range renderErrors {
+		if ei == 0 {
+			fmt.Println(colorGrey + "-------------------" + colorReset)
+		}
+		fmt.Println(colorGrey+"["+colorRed+"Error"+colorGrey+"] "+colorReset, err)
+		if ei == len(renderErrors)-1 {
+			fmt.Println(colorGrey + "-------------------")
 		}
 	}
-	return errs
+
+	return sb.String(), err
+}
+
+// SetupWispyCache ensures the .wispy cache directory exists.
+func SetupWispyCache() {
+	cacheDir := ".wispy"
+	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+		err := os.Mkdir(cacheDir, os.ModePerm)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to create .wispy directory: %v", err))
+		}
+	}
 }

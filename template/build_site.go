@@ -1,4 +1,4 @@
-package engine
+package template
 
 import (
 	"fmt"
@@ -10,7 +10,18 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/kato-studio/wispy/template/structure"
 )
+
+// NewSiteStructure creates a new SiteStructure with initialized maps.
+func NewSiteStructure(domain string) structure.SiteStructure {
+	return structure.SiteStructure{
+		Domain:   domain,
+		Routes:   make(map[string]structure.PageRoutes),
+		Layouts:  make(map[string]string),
+		Partials: make(map[string]string),
+	}
+}
 
 // BuildSiteMap builds the host-to-site mapping by reading directories from the sites folder.
 func BuildSiteMap() {
@@ -72,13 +83,13 @@ func BuildSiteMap() {
 						}
 						// Use a key combining the domain and the pageName.
 						routeKey := domain + "/" + pageName
-						siteStructure.Routes[routeKey] = PageRoutes{
+						siteStructure.Routes[routeKey] = structure.PageRoutes{
 							Name:   pageName,
 							Title:  domain,
 							Layout: "",
 							Path:   path,
 							// Template: string(templateData),
-							MetaTags: MetaTags{
+							MetaTags: structure.MetaTags{
 								Title:         domain + " title",
 								Description:   "Page description here",
 								OgTitle:       domain + " title",
@@ -98,13 +109,13 @@ func BuildSiteMap() {
 					slog.Error("Error accessing component path ", path, ": ", err)
 					return err
 				}
-				if !d.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
+				if !d.IsDir() && filepath.Ext(path) == structure.Wispy.FILE_EXT {
 					// templateData, err := os.ReadFile(path)
 					// if err != nil {
 					// 	slog.Error("Failed to read component file at ", path, ": ", err)
 					// 	return err
 					// }
-					componentName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
+					componentName := strings.TrimSuffix(filepath.Base(path), structure.Wispy.FILE_EXT)
 					siteStructure.Partials[componentName] = path //string(templateData)
 				}
 				return nil
@@ -116,13 +127,13 @@ func BuildSiteMap() {
 					slog.Error("Error accessing layout path ", path, ": ", err)
 					return err
 				}
-				if !info.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
+				if !info.IsDir() && filepath.Ext(path) == structure.Wispy.FILE_EXT {
 					templateData, err := os.ReadFile(path)
 					if err != nil {
 						slog.Error("Failed to read layout file at ", path, ": ", err)
 						return err
 					}
-					layoutName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
+					layoutName := strings.TrimSuffix(filepath.Base(path), structure.Wispy.FILE_EXT)
 					siteStructure.Layouts[layoutName] = string(templateData)
 				}
 				return nil
