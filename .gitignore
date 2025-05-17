@@ -28,5 +28,6 @@ atomicstyle/trie_dump.txt
 
 
 # Other
+.vscode
+.zed
 .DS_Store
-
