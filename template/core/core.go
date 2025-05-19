@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // // reperesnets the settings/presets of the current template engine instances

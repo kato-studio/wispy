@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // "passed" currently used by extend & layout tags to render passed content

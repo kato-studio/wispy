@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // NewSiteStructure creates a new SiteStructure with initialized maps.
@@ -24,10 +24,10 @@ func NewSiteStructure(domain string) structure.SiteStructure {
 }
 
 // BuildSiteMap builds the host-to-site mapping by reading directories from the sites folder.
-func BuildSiteMap() {
+func BuildSiteMap(engine *structure.TemplateEngine) {
 	buildStart := time.Now()
 	// Read the sites directory.
-	entries, err := os.ReadDir(Wispy.SITE_DIR)
+	entries, err := os.ReadDir(engine.SITES_DIR)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to read sites directory: %v", err))
 	}
@@ -36,8 +36,8 @@ func BuildSiteMap() {
 	for _, entry := range entries {
 		if entry.IsDir() {
 			domain := entry.Name()
-			siteFolderPath := filepath.Join(Wispy.SITE_DIR, domain)
-			configFilePath := filepath.Join(siteFolderPath, Wispy.SITE_CONFIG_NAME)
+			siteFolderPath := filepath.Join(engine.SITES_DIR, domain)
+			configFilePath := filepath.Join(siteFolderPath, engine.SITE_CONFIG_NAME)
 
 			// Read and decode the site config.
 			configBytes, err := os.ReadFile(configFilePath)
@@ -66,10 +66,10 @@ func BuildSiteMap() {
 					return err
 				}
 				// Only process files with the configured extension.
-				if !info.IsDir() && filepath.Ext(path) == Wispy.FILE_EXT {
+				if !info.IsDir() && filepath.Ext(path) == engine.FILE_EXT {
 					// Check if file name (without extension) matches the page file name.
-					baseName := strings.TrimSuffix(filepath.Base(path), Wispy.FILE_EXT)
-					if baseName == Wispy.PAGE_FILE_NAME {
+					baseName := strings.TrimSuffix(filepath.Base(path), engine.FILE_EXT)
+					if baseName == engine.PAGE_FILE_NAME {
 						// Determine the page name as the relative directory from the pages folder.
 						relDir, err := filepath.Rel(pagesPath, filepath.Dir(path))
 						if err != nil {
@@ -139,14 +139,14 @@ func BuildSiteMap() {
 				return nil
 			})
 
-			SiteMap[domain] = &siteStructure
+			engine.SiteMap[domain] = siteStructure
 		}
 	}
 	//
 	fmt.Println("SiteMap Build Time: ", time.Since(buildStart))
 	// Log the list of sites for confirmation.
 	var domains []string
-	for domain := range SiteMap {
+	for domain := range engine.SiteMap {
 		domains = append(domains, domain)
 	}
 	fmt.Println("Sites: ", domains)

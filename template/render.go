@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 const (
@@ -26,44 +26,37 @@ const (
 // RenderRoute renders a page route for a given domain and page name.
 // It looks up the page in the site's route map
 // The route key is assumed to be in the form "domain/pageName" (e.g. "example.com/about").
-func RenderRoute(site *structure.SiteStructure, requestPath string, data map[string]any, w http.ResponseWriter, r *http.Request) (output string, err error) {
+func RenderRoute(engine *structure.TemplateEngine, ctx *structure.RenderCtx, requestPath string, data map[string]any, w http.ResponseWriter, r *http.Request) (output string, err error) {
+	ctx.ResponseWriter = &w
+	ctx.Request = r
+
 	// Construct the route key. If route is empty, key becomes "domain/".
+	site := ctx.Site
 	routeKey := site.Domain + requestPath
 	route, exists := site.Routes[routeKey]
 	if !exists {
 		return "", fmt.Errorf("route %s not found", routeKey)
 	}
+
 	// Create the render context and inject it into the data.
 	if data == nil {
 		data = make(map[string]any)
 	}
 
-	data = map[string]any{}
-
 	// Read and merge JSON data if the file exist
 	jsonPath := filepath.Join(filepath.Dir(route.Path), "data_en.json")
-	if _, err := os.Stat(jsonPath); err == nil {
-		jsonAsBytes, err := os.ReadFile(jsonPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to read JSON file: %w", err)
-		}
-		var jsonData map[string]any
-		if err := json.Unmarshal(jsonAsBytes, &jsonData); err != nil {
-			return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
-		}
-		// Merge JSON data with existing data
-		for k, v := range jsonData {
-			data[k] = v
-		}
-	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("failed to check JSON file: %w", err)
+	jsonAsBytes, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read JSON file: %w", err)
 	}
-
-	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
-	scopedDirectory := filepath.Join(Wispy.SITE_DIR, site.Domain)
-	// ctx := template.NewRenderCtx(engine, scopedDirectory, data)
-	engine := StartDefaultEngine()
-	ctx := engine.InitCtx(scopedDirectory, data)
+	var jsonData map[string]any
+	if err := json.Unmarshal(jsonAsBytes, &jsonData); err != nil {
+		return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+	// Merge JSON data with existing data
+	for k, v := range jsonData {
+		data[k] = v
+	}
 
 	templateAsBytes, err := os.ReadFile(route.Path)
 	if err != nil {
@@ -73,6 +66,7 @@ func RenderRoute(site *structure.SiteStructure, requestPath string, data map[str
 	}
 	//
 	var sb strings.Builder
+	ctx.Data = data
 	renderErrors := Render(ctx, &sb, string(templateAsBytes))
 
 	// TODO: only log errors if debug is active

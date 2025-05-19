@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kato-studio/wispy/template/structure"
-	"github.com/kato-studio/wispy/utilities"
+	common "github.com/kato-studio/wispy/wispy_common"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // returns the index of the from current pos, if non-found the pos will be the same upon return
@@ -97,13 +97,13 @@ func ResolveValue(ctx *structure.RenderCtx, expr string) (any, error) {
 }
 
 // ---
-// The Following functions have been moved to a general utilities package
+// The Following functions have been moved to a general wispy_common package
 // ---
 
 // SplitRespectQuotes splits a string by spaces while respecting quoted substrings and removing empty values.
-var SplitRespectQuotes = utilities.SplitRespectQuotes
+var SplitRespectQuotes = common.SplitRespectQuotes
 
-var ParseDataPath = utilities.ParseDataPath
+var ParseDataPath = common.ParseDataPath
 
 // this stringify function currently handles non-string values when resolving variables from ctx.Data & ctx.Props
-var stringify = utilities.stringify
+var Stringify = common.Stringify

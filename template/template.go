@@ -6,11 +6,11 @@ import (
 
 	"github.com/kato-studio/wispy/template/core"
 	"github.com/kato-studio/wispy/template/filters"
-	"github.com/kato-studio/wispy/template/structure"
 	"github.com/kato-studio/wispy/template/tags"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
-var SiteMap = map[string]*structure.SiteStructure{}
+// var SiteMap = map[string]*structure.SiteStructure{}
 var Logger *slog.JSONHandler
 
 /*
@@ -32,12 +32,12 @@ func init() {
 }
 
 // EngineCtx is the engine context which holds site mappings and configuration.
-var Wispy = &structure.WispyConfig{
-	SITE_DIR:         "./sites",
-	PAGE_FILE_NAME:   "page",
-	FILE_EXT:         ".hstm",
-	SITE_CONFIG_NAME: "config.toml",
-}
+// var Wispy = structure.WispyConfig{
+// 	SITE_DIR:         "./sites",
+// 	PAGE_FILE_NAME:   "page",
+// 	FILE_EXT:         ".hstm",
+// 	SITE_CONFIG_NAME: "config.toml",
+// }
 
 var DefaultTemplateFilters = []structure.TemplateFilter{
 	filters.UpcaseFilter,

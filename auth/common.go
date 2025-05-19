@@ -1,31 +1,27 @@
 package auth
 
 import (
-	"os"
 	"time"
 
-	"github.com/go-oauth2/oauth2/v4/server"
+	"github.com/google/uuid"
 )
 
 // AuthConfig holds configuration for authentication
-type AuthConfig struct {
+type Config_OAuth struct {
 	ClientId        string
 	ClientSecret    string
 	RedirectURL     string
 	TokenSecret     string
-	TokenExpiration time.Duration
+	TokenExpiration int
 }
 
-// AuthService provides authentication utilities
-type AuthService struct {
-	oauthServer *server.Server
-	config      AuthConfig
-}
+var dur7says = int((time.Hour * 24 * 7).Seconds())
 
-var dur7says, _ = time.ParseDuration("7d")
-var DiscordConfig = AuthConfig{
-	ClientId:        os.Getenv("DISCORD_CLIENT_ID"),
-	ClientSecret:    os.Getenv("DISCORD_CLIENT_SECRET"),
-	TokenSecret:     os.Getenv("DISCORD_REDIRECT_URL"),
-	TokenExpiration: dur7says,
+type User struct {
+	ID        int
+	UUID      uuid.UUID
+	Username  string
+	Email     string
+	UpdatedAt time.Duration
+	CreatedAt time.Duration
 }

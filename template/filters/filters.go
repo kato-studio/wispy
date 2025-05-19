@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // // Universal template data filters function struct

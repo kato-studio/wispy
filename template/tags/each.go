@@ -7,14 +7,14 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // Render
 var EachTag = TemplateTag{
 	Name: "each",
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-		endTag := delimWrap(ctx, "endeach")
+		endTag := delimWrap(ctx, "end-each")
 		openingOfTag := ctx.Engine.DelimStart + " each "
 		endTagStart, endTagLength := core.SeekClosingHandleNested(raw, endTag, openingOfTag, pos)
 		if endTagStart == -1 {
@@ -48,7 +48,7 @@ var EachTag = TemplateTag{
 				// Clone parent data and add loop variable
 				newData := maps.Clone(ctx.Data)
 				newData[loopVar] = collValue.Index(i).Interface() // Store in Data
-				newCtx := &structure.RenderCtx{
+				newCtx := structure.RenderCtx{
 					Engine:          ctx.Engine,
 					Data:            newData, // Use cloned data
 					Props:           maps.Clone(ctx.Props),
@@ -57,7 +57,7 @@ var EachTag = TemplateTag{
 
 				// Render block with new context
 				var blockSB strings.Builder
-				if renderErrs := core.Render(newCtx, &blockSB, blockContent); len(renderErrs) > 0 {
+				if renderErrs := core.Render(&newCtx, &blockSB, blockContent); len(renderErrs) > 0 {
 					errs = append(errs, renderErrs...)
 				}
 				sb.WriteString(blockSB.String())
@@ -68,7 +68,7 @@ var EachTag = TemplateTag{
 			for iter.Next() {
 				newData := maps.Clone(ctx.Data)
 				newData[loopVar] = iter.Value().Interface() // Store in Data
-				newCtx := &structure.RenderCtx{
+				newCtx := structure.RenderCtx{
 					Engine:          ctx.Engine,
 					Data:            newData,
 					Props:           maps.Clone(ctx.Props),
@@ -76,7 +76,7 @@ var EachTag = TemplateTag{
 				}
 
 				var blockSB strings.Builder
-				if renderErrs := core.Render(newCtx, &blockSB, blockContent); len(renderErrs) > 0 {
+				if renderErrs := core.Render(&newCtx, &blockSB, blockContent); len(renderErrs) > 0 {
 					errs = append(errs, renderErrs...)
 				}
 				sb.WriteString(blockSB.String())

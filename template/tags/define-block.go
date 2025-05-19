@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // DefineTag allows defining a named block of content that can be overridden by extending templates
@@ -20,7 +20,7 @@ var DefineTag = TemplateTag{
 		}
 
 		// Find the closing tag
-		closingTag := delimWrap(ctx, "enddefine")
+		closingTag := delimWrap(ctx, "end-define")
 		closingPos := strings.Index(raw[pos:], closingTag)
 		if closingPos == -1 {
 			errs = append(errs, fmt.Errorf("define tag missing closing enddefine"))
@@ -54,7 +54,7 @@ var BlockTag = TemplateTag{
 		}
 
 		// Find the closing tag
-		closingTag := delimWrap(ctx, "endblock")
+		closingTag := delimWrap(ctx, "end-block")
 		closingPos := strings.Index(raw[pos:], closingTag)
 		if closingPos == -1 {
 			errs = append(errs, fmt.Errorf("block tag missing closing endblock"))

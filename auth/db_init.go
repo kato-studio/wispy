@@ -3,12 +3,12 @@ package auth
 import (
 	"database/sql"
 	"fmt"
+	"log"
 )
 
-// InitDB creates and migrates all necessary tables
-func InitDB(db *sql.DB) error {
-	// createTables sets up the required database tables with proper normalization
-	// Use a transaction for atomic table creation
+// InitUsersDB creates and migrates all necessary tables
+func InitUsersDB(db *sql.DB) error {
+	log.Print("Starting Database Initialization")
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -18,7 +18,8 @@ func InitDB(db *sql.DB) error {
 	// Users table - core user information
 	_, err = tx.Exec(`
 		CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			uuid TEXT UNIQUE NOT NULL,
 			username TEXT UNIQUE NOT NULL,
 			email TEXT UNIQUE,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -27,7 +28,6 @@ func InitDB(db *sql.DB) error {
 
 		CREATE TRIGGER IF NOT EXISTS update_users_timestamp
 		AFTER UPDATE ON users
-		FOR EACH ROW
 		BEGIN
 			UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
 		END;
@@ -57,23 +57,22 @@ func InitDB(db *sql.DB) error {
 	// User authentication providers (for OAuth, etc.)
 	_, err = tx.Exec(`
 		CREATE TABLE IF NOT EXISTS user_auth_providers (
-			user_id TEXT NOT NULL,
+			user_id INTEGER NOT NULL,
 			auth_method_id INTEGER NOT NULL,
-			provider_id TEXT NOT NULL,  // Unique ID from provider (e.g., Discord ID)
+			provider_id TEXT NOT NULL,
 			provider_username TEXT,
 			provider_email TEXT,
-			provider_data TEXT,  // JSON blob of additional provider data
+			provider_data TEXT,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (user_id, auth_method_id),
-			UNIQUE (auth_method_id, provider_id),  // One provider ID per auth method
+			UNIQUE (auth_method_id, provider_id),
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 			FOREIGN KEY (auth_method_id) REFERENCES auth_methods(id)
 		);
 
 		CREATE TRIGGER IF NOT EXISTS update_user_auth_providers_timestamp
 		AFTER UPDATE ON user_auth_providers
-		FOR EACH ROW
 		BEGIN
 			UPDATE user_auth_providers SET updated_at = CURRENT_TIMESTAMP
 			WHERE user_id = OLD.user_id AND auth_method_id = OLD.auth_method_id;
@@ -83,10 +82,10 @@ func InitDB(db *sql.DB) error {
 		return fmt.Errorf("failed to create user_auth_providers table: %w", err)
 	}
 
-	// Local password credentials (separate from OAuth providers)
+	// Local password credentials
 	_, err = tx.Exec(`
 		CREATE TABLE IF NOT EXISTS user_passwords (
-			user_id TEXT PRIMARY KEY,
+			user_id INTEGER PRIMARY KEY,
 			password_hash TEXT NOT NULL,
 			reset_token TEXT,
 			reset_token_expiry TIMESTAMP,
@@ -96,7 +95,6 @@ func InitDB(db *sql.DB) error {
 
 		CREATE TRIGGER IF NOT EXISTS update_user_passwords_timestamp
 		AFTER UPDATE ON user_passwords
-		FOR EACH ROW
 		BEGIN
 			UPDATE user_passwords SET updated_at = CURRENT_TIMESTAMP WHERE user_id = OLD.user_id;
 		END;
@@ -119,7 +117,7 @@ func InitDB(db *sql.DB) error {
 			('moderator', 'Content moderator');
 
 		CREATE TABLE IF NOT EXISTS user_roles (
-			user_id TEXT NOT NULL,
+			user_id INTEGER NOT NULL,
 			role_id INTEGER NOT NULL,
 			assigned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (user_id, role_id),
@@ -131,27 +129,6 @@ func InitDB(db *sql.DB) error {
 		return fmt.Errorf("failed to create roles tables: %w", err)
 	}
 
-	// Create indexes for performance
-	_, err = tx.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_user_auth_providers_provider ON user_auth_providers(auth_method_id, provider_id);
-		CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
-	`)
-	if err != nil {
-		return fmt.Errorf("failed to create indexes: %w", err)
-	}
-
+	log.Print("Database Initialization Completed Successfully")
 	return tx.Commit()
 }
-
-// Example of how this would work with different providers:
-// // Adding a new authentication method becomes trivial:
-// _, err = db.Exec(`INSERT OR IGNORE INTO auth_methods (name, description) VALUES (?, ?)`,
-// 	"apple", "Apple Sign In")
-
-// // Querying a user by provider:
-// var userID string
-// err = db.QueryRow(`
-// 	SELECT user_id FROM user_auth_providers
-// 	WHERE auth_method_id = (SELECT id FROM auth_methods WHERE name = ?)
-// 	AND provider_id = ?`,
-// 	"discord", "123456789").Scan(&userID)

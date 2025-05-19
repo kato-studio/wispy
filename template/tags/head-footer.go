@@ -4,29 +4,20 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
-// this function is also used by /tags/css-js.go
+// parseAssetTagOptions handles the full parsing including the path edge case
 func parseAssetTagOptions(input string) map[string]string {
-	options := make(map[string]string)
-
-	// Split into key=value pairs
 	pairs := core.SplitRespectQuotes(input)
-	for _, pair := range pairs {
-		// Handle inline content (wrapped in quotes)
-		if strings.Contains(pair, "=") {
-			parts := strings.SplitN(pair, "=", 2)
-			key := strings.TrimSpace(parts[0])
-			value := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
-			options[key] = value
-		} else {
-			// Handle standalone flags or default path
-			if _, exists := options["path"]; !exists {
-				options["path"] = strings.Trim(pair, `"'`)
-			} else {
-				options[pair] = "true"
-			}
+	options := wispy_common.ParseKeyValuePairs(pairs)
+
+	// Handle the special case for standalone path
+	if _, exists := options["path"]; !exists && len(pairs) > 0 {
+		firstPair := strings.Trim(pairs[0], `"'`)
+		if !strings.Contains(firstPair, "=") {
+			options["path"] = firstPair
 		}
 	}
 
@@ -61,12 +52,12 @@ var LinkTag = TemplateTag{
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (int, []error) {
 		options := core.SplitRespectQuotes(tag_contents)
 
-		tag := &structure.HeadTag{
+		tag := structure.HeadTag{
 			TagName:    "link",
 			Attributes: options,
 		}
 
-		ctx.HeadTags.Add(tag)
+		ctx.HeadTags.Add(&tag)
 		return pos, nil
 	},
 }
@@ -76,12 +67,12 @@ var MetaTag = TemplateTag{
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (int, []error) {
 		options := core.SplitRespectQuotes(tag_contents)
 
-		tag := &structure.HeadTag{
+		tag := structure.HeadTag{
 			TagName:    "meta",
 			Attributes: options,
 		}
 
-		ctx.HeadTags.Add(tag)
+		ctx.HeadTags.Add(&tag)
 		return pos, nil
 	},
 }

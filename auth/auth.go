@@ -1,163 +1,68 @@
 package auth
 
 import (
+	"context"
 	"database/sql"
-	"errors"
+	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/go-oauth2/oauth2/v4"
-	"github.com/go-oauth2/oauth2/v4/generates"
-	"github.com/go-oauth2/oauth2/v4/manage"
-	"github.com/go-oauth2/oauth2/v4/models"
-	"github.com/go-oauth2/oauth2/v4/server"
-	"github.com/go-oauth2/oauth2/v4/store"
-	"github.com/kato-studio/wispy/auth/users"
-	"github.com/kato-studio/wispy/utilities"
 )
 
-type AuthManager struct {
-	Manager     *manage.Manager
-	Database    *sql.DB
-	UserStorage users.UserStorage
-	Services    map[string](*AuthService)
-}
-
-func (am *AuthManager) Init(userStorage users.UserStorage, Database *sql.DB) {
-	//
-	am.UserStorage = userStorage
-	am.Database = Database
-	//
-	am.Manager.MustTokenStorage(store.NewFileTokenStore("./db/auth-session-tokens.buntdb"))
-	//
-	am.Manager = manage.NewManager()
-	// default implementation
-	am.Manager.MapAuthorizeGenerate(generates.NewAuthorizeGenerate())
-	am.Manager.MapAccessGenerate(generates.NewAccessGenerate())
-}
-
-// NewAuthService creates a new authentication service
-func (am *AuthManager) NewAuthService(serviceName string, config AuthConfig) {
-	clientStore := store.NewClientStore()
-	clientStore.Set(config.ClientId, &models.Client{
-		ID:     config.ClientId,
-		Secret: config.ClientSecret,
-		Domain: config.RedirectURL,
-	})
-	am.Manager.MapClientStorage(clientStore)
-
-	srv := server.NewDefaultServer(am.Manager)
-	srv.SetAllowGetAccessRequest(true)
-	srv.SetClientInfoHandler(server.ClientFormHandler)
-
-	am.Services[serviceName] = &AuthService{
-		oauthServer: srv,
-		config:      config,
-	}
-}
-
-// Verify Token from session cookie
-func (am *AuthManager) VarifySession(r *http.Request) (bool, error) {
+// VerifyAndGetSession checks for a valid session and returns the session info
+func VerifyAndGetSession(sessionDB *sql.DB, r *http.Request) (valid bool, userID string, expiresAt time.Time, err error) {
 	// Get session cookie
 	sessionCookie, err := r.Cookie("auth-session")
 	if err != nil {
-		return false, err
-	}
-
-	// Verify we have a valid session token
-	tokenInfo, err := am.Manager.LoadAccessToken(r.Context(), sessionCookie.Value)
-	if err != nil {
-		return false, err
-	}
-
-	tokenInfo.GetAccess()
-
-	return true, err
-}
-
-// GetUserFromSession retrieves the authenticated user from the session cookie
-func (am *AuthManager) GetUserFromSession(r *http.Request) (*users.User, error) {
-	// Get session cookie
-	sessionCookie, err := r.Cookie("auth-session")
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify we have a valid session token
-	tokenInfo, err := am.Manager.LoadAccessToken(r.Context(), sessionCookie.Value)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get user ID from token
-	userID := tokenInfo.GetUserID()
-	if userID == "" {
-		return nil, errors.New("no user ID in token")
-	}
-
-	// Get user from storage
-	user, err := am.UserStorage.GetByID(r.Context(), userID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("user not found")
+		if err == http.ErrNoCookie {
+			return false, "", time.Time{}, nil // No session cookie
 		}
-		return nil, err
+		return false, "", time.Time{}, fmt.Errorf("failed to get session cookie: %w", err)
 	}
 
-	return user, nil
+	// Initialize sessions interface
+	sessions := SQLiteSessionsInterface{db: sessionDB}
+
+	// Get session from database
+	userID, expiresAt, err = sessions.Get(sessionCookie.Value)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, "", time.Time{}, nil // Session doesn't exist
+		}
+		return false, "", time.Time{}, fmt.Errorf("failed to verify session: %w", err)
+	}
+
+	// Check expiration
+	if time.Now().After(expiresAt) {
+		return false, "", time.Time{}, nil // Session expired
+	}
+
+	return true, userID, expiresAt, nil
 }
 
-// CreateSession creates a new authenticated session for the user
-func (am *AuthManager) CreateSession(w http.ResponseWriter, r *http.Request, user *users.User) error {
-	// Generate new access token
-	token, err := am.Manager.GenerateAccessToken(
-		r.Context(),
-		oauth2.PasswordCredentials,
-		&oauth2.TokenGenerateRequest{
-			UserID: user.ID.String(),
-		},
-	)
-	if err != nil {
-		return err
+// Middleware version for http handlers
+func SessionMiddleware(sessionDB *sql.DB) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			valid, userID, _, err := VerifyAndGetSession(sessionDB, r)
+			if err != nil {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			if !valid {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			// Add userID to request context
+			ctx := context.WithValue(r.Context(), "userID", userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
-
-	// Set session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth-session",
-		Value:    token.GetAccess(),
-		Path:     "/",
-		MaxAge:   int((time.Hour * 24 * 7).Seconds()), // 1 week
-		HttpOnly: true,
-		Secure:   true, // Enable in production with HTTPS
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	return nil
 }
 
-// DestroySession removes the authenticated session
-func (am *AuthManager) DestroySession(w http.ResponseWriter, r *http.Request) error {
-	sessionCookie, err := r.Cookie("auth-session")
-	if err != nil {
-		return nil // No session to destroy
-	}
-
-	// Remove token from storage
-	err = am.Manager.RemoveAccessToken(r.Context(), sessionCookie.Value)
-	if err != nil {
-		return err
-	}
-
-	// Expire the cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth-session",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   utilities.IsProduction(),
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	return nil
+// Convenience wrapper that returns just the validation status
+func IsSessionValid(sessionDB *sql.DB, r *http.Request) (bool, error) {
+	valid, _, _, err := VerifyAndGetSession(sessionDB, r)
+	return valid, err
 }

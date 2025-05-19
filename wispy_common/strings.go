@@ -1,4 +1,4 @@
-package utilities
+package wispy_common
 
 import (
 	"fmt"
@@ -36,6 +36,24 @@ func SplitRespectQuotes(s string) []string {
 	return result
 }
 
+// ParseKeyValuePairs handles the key=value pairs parsing logic
+func ParseKeyValuePairs(pairs []string) map[string]string {
+	options := make(map[string]string)
+
+	for _, pair := range pairs {
+		if strings.Contains(pair, "=") {
+			parts := strings.SplitN(pair, "=", 2)
+			key := strings.TrimSpace(parts[0])
+			value := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
+			options[key] = value
+		} else {
+			options[pair] = "true"
+		}
+	}
+
+	return options
+}
+
 func ParseDataPath(parts []string, value any) any {
 	var current_val any
 	var exists bool
@@ -60,7 +78,7 @@ func ParseDataPath(parts []string, value any) any {
 }
 
 // this stringify function curerntly handles non-string values when resolving variables from ctx.Data & ctx.Props
-func stringify(val interface{}) string {
+func Stringify(val interface{}) string {
 	if val == nil {
 		return ""
 	}
@@ -112,7 +130,7 @@ func stringify(val interface{}) string {
 		// Preallocate slice for faster joins
 		parts := make([]string, 0, length)
 		for i := 0; i < length; i++ {
-			parts = append(parts, stringify(rv.Index(i).Interface()))
+			parts = append(parts, Stringify(rv.Index(i).Interface()))
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
 
@@ -126,8 +144,8 @@ func stringify(val interface{}) string {
 		for _, key := range keys {
 			parts = append(parts, fmt.Sprintf(
 				"%s: %s",
-				stringify(key.Interface()),
-				stringify(rv.MapIndex(key).Interface()),
+				Stringify(key.Interface()),
+				Stringify(rv.MapIndex(key).Interface()),
 			))
 		}
 		return "{" + strings.Join(parts, ", ") + "}"

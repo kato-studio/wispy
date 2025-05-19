@@ -5,7 +5,7 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 func ResolveFiltersIfAny(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents string) error {
@@ -21,7 +21,7 @@ func ResolveFiltersIfAny(ctx *structure.RenderCtx, sb *strings.Builder, tag_cont
 		if str, ok := val.(string); ok {
 			sb.WriteString(str)
 		} else {
-			sb.WriteString(stringify(val))
+			sb.WriteString(Stringify(val))
 		}
 	} else if lenParts > 1 {
 		var pipeValue any = val

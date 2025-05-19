@@ -3,7 +3,6 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -32,11 +31,11 @@ func CheckPassword(password, hash string) bool {
 }
 
 // OAuth2 Utilities
-// -- HandleDiscordLogin initiates the Discord OAuth2 flow
-func (a *AuthService) HandleDiscordLogin(w http.ResponseWriter, r *http.Request) {
-	err := a.oauthServer.HandleAuthorizeRequest(w, r)
-	if err != nil {
-		http.Error(w, "Failed to start OAuth flow", http.StatusInternalServerError)
-		return
-	}
-}
+// // -- HandleDiscordLogin initiates the Discord OAuth2 flow
+// func (a *AuthService) HandleDiscordLogin(w http.ResponseWriter, r *http.Request) {
+// 	err := a.oauthServer.HandleAuthorizeRequest(w, r)
+// 	if err != nil {
+// 		http.Error(w, "Failed to start OAuth flow", http.StatusInternalServerError)
+// 		return
+// 	}
+// }

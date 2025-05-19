@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 var ImportCSSTag = TemplateTag{
@@ -27,7 +27,7 @@ var ImportCSSTag = TemplateTag{
 			priority = 100 // Default CSS priority
 		}
 
-		asset := &structure.Asset{
+		asset := structure.Asset{
 			Path:      options["path"],
 			Type:      structure.CSS,
 			Priority:  priority,
@@ -44,7 +44,7 @@ var ImportCSSTag = TemplateTag{
 			return pos, errs
 		}
 
-		ctx.AssetRegistry.Add(asset)
+		ctx.AssetRegistry.Add(&asset)
 		return pos, errs
 	},
 }
@@ -66,7 +66,7 @@ var ImportJSTag = TemplateTag{
 			priority = 200 // Default JS priority
 		}
 
-		asset := &structure.Asset{
+		asset := structure.Asset{
 			Path:        options["path"],
 			Type:        structure.JS,
 			Priority:    priority,
@@ -87,7 +87,7 @@ var ImportJSTag = TemplateTag{
 			return pos, errs
 		}
 
-		ctx.AssetRegistry.Add(asset)
+		ctx.AssetRegistry.Add(&asset)
 		return pos, errs
 	},
 }
@@ -99,7 +99,7 @@ var CSSTag = TemplateTag{
 		options := parseAssetTagOptions(tag_contents)
 
 		// Find closing tag
-		closingTag := delimWrap(ctx, "endcss")
+		closingTag := delimWrap(ctx, "end-css")
 		closingPos := strings.Index(raw[pos:], closingTag)
 		if closingPos == -1 {
 			return pos, []error{fmt.Errorf("missing closing endcss tag")}
@@ -131,7 +131,7 @@ var JSTag = TemplateTag{
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (int, []error) {
 		options := parseAssetTagOptions(tag_contents)
 
-		closingTag := delimWrap(ctx, "endjs")
+		closingTag := delimWrap(ctx, "end-js")
 		closingPos := strings.Index(raw[pos:], closingTag)
 		if closingPos == -1 {
 			return pos, []error{fmt.Errorf("missing closing endjs tag")}
@@ -195,7 +195,7 @@ var ImportTag = TemplateTag{
 
 		switch ext {
 		case ".css":
-			asset := &structure.Asset{
+			asset := structure.Asset{
 				Type:      structure.CSS,
 				Content:   contentStr,
 				IsInline:  true,
@@ -206,10 +206,10 @@ var ImportTag = TemplateTag{
 			if priority == 0 {
 				asset.Priority = 100 // Default CSS
 			}
-			ctx.AssetRegistry.Add(asset)
+			ctx.AssetRegistry.Add(&asset)
 
 		case ".js":
-			asset := &structure.Asset{
+			asset := structure.Asset{
 				Type:      structure.JS,
 				Content:   contentStr,
 				IsInline:  true,
@@ -222,7 +222,7 @@ var ImportTag = TemplateTag{
 			if priority == 0 {
 				asset.Priority = 200 // Default JS
 			}
-			ctx.AssetRegistry.Add(asset)
+			ctx.AssetRegistry.Add(&asset)
 
 		default:
 			// Directly include other file types

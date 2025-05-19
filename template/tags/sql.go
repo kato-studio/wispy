@@ -7,9 +7,7 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
-
-	_ "github.com/tursodatabase/go-libsql"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 var SQLiteTag = TemplateTag{
@@ -42,7 +40,7 @@ var SQLiteTag = TemplateTag{
 		}
 
 		// Find the end tag
-		endTag := delimWrap(ctx, "endsqlite")
+		endTag := delimWrap(ctx, "end-sqlite")
 		endTagStart, endTagLength := core.SeekIndexAndLength(raw, endTag, pos)
 		if endTagStart == -1 {
 			errs = append(errs, fmt.Errorf("could not find end tag for %s", endTag))
@@ -196,14 +194,14 @@ var SQLiteTag = TemplateTag{
 //         // Create appropriate asset based on file type
 //         switch ext {
 //         case ".css":
-//             ctx.AssetRegistry.Add(&structure.Asset{
+//             ctx.AssetRegistry.Add(structure.Asset{
 //                 Type:     structure.CSS,
 //                 Content:  string(content),
 //                 IsInline: true,
 //                 Priority: 100, // Default CSS priority
 //             })
 //         case ".js":
-//             ctx.AssetRegistry.Add(&structure.Asset{
+//             ctx.AssetRegistry.Add(structure.Asset{
 //                 Type:     structure.JS,
 //                 Content:  string(content),
 //                 IsInline: true,
@@ -220,7 +218,7 @@ var SQLiteTag = TemplateTag{
 // var IfTag = TemplateTag{
 // 	Name: "if",
 // 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-// 		endTag := delimWrap(ctx, "endif")
+// 		endTag := delimWrap(ctx, "end-if")
 // 		endTagStart, endTagLength := core.SeekIndexAndLength(raw, endTag, pos)
 // 		if endTagStart == -1 {
 // 			errs = append(errs, fmt.Errorf("could not find end tag for %s", endTag))

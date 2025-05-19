@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // ExtendsTag allows a template to extend another template and override its blocks
@@ -23,7 +23,7 @@ var ExtendsTag = TemplateTag{
 
 		// Find the closing tag for the entire content (if any)
 		// This is optional as extends might be at the top with content following
-		closingTag := delimWrap(ctx, "endextends")
+		closingTag := delimWrap(ctx, "end-extends")
 		closingPos := strings.Index(raw[pos:], closingTag)
 		if closingPos != -1 {
 			closingPos += pos
@@ -54,7 +54,7 @@ var ExtendsTag = TemplateTag{
 
 		// Parse the child content to find block definitions
 		slotStartTag := delimWrap(ctx, "slot ")
-		slotEndTag := delimWrap(ctx, "endslot")
+		slotEndTag := delimWrap(ctx, "end-slot")
 
 		var rawContent strings.Builder
 		childPos := 0

@@ -5,14 +5,14 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // If take only show content if a value is true
 var IfTag = TemplateTag{
 	Name: "if",
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-		endTag := delimWrap(ctx, "endif")
+		endTag := delimWrap(ctx, "end-if")
 		endTagStart, endTagLength := core.SeekIndexAndLength(raw, endTag, pos)
 		if endTagStart == -1 {
 			errs = append(errs, fmt.Errorf("could not find end tag for %s", endTag))

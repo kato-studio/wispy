@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/kato-studio/wispy/template/core"
-	"github.com/kato-studio/wispy/template/structure"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // // Universal template tag function struct
@@ -41,7 +41,7 @@ func delimWrap(ctx *structure.RenderCtx, value string) string {
 var CommentTag = TemplateTag{
 	Name: "comment",
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
-		endTag := delimWrap(ctx, "endcomment")
+		endTag := delimWrap(ctx, "end-comment")
 		endTagStart, endTagLength := core.SeekIndexAndLength(raw, endTag, pos)
 		if endTagStart == -1 {
 			errs = append(errs, fmt.Errorf("could not find end tag for %s", endTag))

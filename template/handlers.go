@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kato-studio/wispy/template/core"
+	"github.com/kato-studio/wispy/wispy_common/structure"
 )
 
 // Define some example colors for logging
@@ -18,22 +19,22 @@ const (
 	colorReset = "\033[0m"
 )
 
-func SitePublicFolderHnadler(w http.ResponseWriter, r *http.Request) {
+func SitePublicFolderHandler(engine *structure.TemplateEngine, w http.ResponseWriter, r *http.Request) {
 	// Handle essential site files served from "/"
 	domain := r.Host
 	requestPath := r.URL.Path
 	filename := filepath.Base(requestPath)
 	if _, exists := core.ESSENTIAL_SERVE[filename]; exists {
-		targetFile := filepath.Join(Wispy.SITE_DIR, domain, "public/essential", filename)
+		targetFile := filepath.Join(engine.SITES_DIR, domain, "public/essential", filename)
 		// Serve the essential file
 		http.ServeFile(w, r, targetFile)
 		return
 	}
 
 	// Serve public assets
-	// targetFile := filepath.Join(core.Wispy.SITE_DIR, domain, requestPath)
+	// targetFile := filepath.Join(core.Wispy.SITES_DIR, domain, requestPath)
 	// http.StripPrefix("/public/", http.FileServer(http.Dir("static")))
-	targetFile := filepath.Join(Wispy.SITE_DIR, domain, requestPath)
+	targetFile := filepath.Join(engine.SITES_DIR, domain, requestPath)
 	fmt.Println(targetFile)
 	http.ServeFile(w, r, targetFile)
 	// if _, err := os.Stat(targetFile); err != nil {
@@ -49,45 +50,26 @@ func SitePublicFolderHnadler(w http.ResponseWriter, r *http.Request) {
 	// w.Write(rawBytes)
 }
 
-func SiteRouteHandler(w http.ResponseWriter, r *http.Request) {
+func SiteRouteHandler(engine *structure.TemplateEngine, w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	domain := r.Host
-	//! ------------
-	//! loacltesting addtions should never in prod!
-	//! ------------
-	//
-	domain_cookie := r.CookiesNamed("local_dev_domain")
-	if len(domain_cookie) == 1 {
-		domain = domain_cookie[0].Value
-		r.Host = domain
-		fmt.Println("settng domain = ", domain)
-	}
-	requestPath := r.URL.Path
-	//!---------------------------
 
 	// Look up the site structure for the domain
-	site, exists := SiteMap[domain]
+	site, exists := engine.SiteMap[domain]
 	if !exists {
 		http.Error(w, fmt.Sprintf("domain %s not found", domain), http.StatusNotFound)
 		return
 	}
 
-	// -----------
-	data := map[string]any{
-		"req": map[string]any{
-			"header":     r.Header,
-			"cookies":    r.Cookies(),
-			"GetCookie":  r.Cookie,
-			"url":        r.URL,
-			"pattern":    r.Pattern,
-			"referer":    r.Referer(),
-			"user-agent": r.UserAgent(),
-		},
-	}
-	// -----------
+	data := map[string]any{}
 
 	// Render the route
-	page, err := RenderRoute(site, requestPath, data, w, r)
+	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
+	scopedDirectory := filepath.Join(engine.SITES_DIR, site.Domain)
+	// ctx := template.NewRenderCtx(engine, scopedDirectory, data)
+	ctx := engine.InitCtx(scopedDirectory, &site, data)
+	//
+	page, err := RenderRoute(engine, ctx, r.URL.Path, data, w, r)
 	if err != nil {
 		slog.Error("Rendering Route using \"RenderRoute()\"" + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

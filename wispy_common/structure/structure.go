@@ -1,6 +1,8 @@
 package structure
 
 import (
+	"database/sql"
+	"net/http"
 	"strings"
 )
 
@@ -24,12 +26,21 @@ type RenderCtx struct {
 	// This will be set to the site directory if using the wispy-engine but is being set as a string option to allow
 	// few changes to support template engine use outsite of the wispy-engine context
 	CurrentTemplatePath string
-	ScopedDirectory     string
-	// For Tag handlers set flags for reference later in render operation
+	//
+	Site            *SiteStructure
+	ScopedDirectory string
+	// Designated map to store flags or data needed by "unofficial" tags
 	InternalFlags map[string]any
-	//
+	// Reference to the current request so tags and other options have access to cookies etc.
+	Request        *http.Request
+	ResponseWriter *http.ResponseWriter
+	// If User is logged in auth middleware can set their ID Here
+	UserID string
+	// The database to fetch user data from such as roles for role access tags
+	UsersDB *sql.DB
+	// Stores assets to either dynamically imported or inline into the page
 	AssetRegistry *AssetRegistry
-	//
+	// Tags to be dynamically rendered into the page head
 	HeadTags *HeadTagRegistry
 }
 
@@ -45,15 +56,30 @@ type TemplateEngine struct {
 	TagMap map[string]TemplateTag
 	// map to check template filters against when rendering
 	FilterMap map[string]TemplateFilter
+	// Wispy Config
+	SITES_DIR        string
+	PAGE_FILE_NAME   string
+	FILE_EXT         string
+	SITE_CONFIG_NAME string
+
+	SiteMap map[string]SiteStructure
 }
 
 // Base function to create TemplateEngine instance used to to control base template settings
 // RenderCtx references the Template engine to for engine settings like registered tags & filters
-// func(*NewTemplateEngine) func() TemplateEngine {
 func (eng *TemplateEngine) Init(tagsMap []TemplateTag, filterMap []TemplateFilter) *TemplateEngine {
 	eng.DelimStart = "{%"
 	eng.DelimEnd = "%}"
 	eng.TagMap = map[string]TemplateTag{}
+
+	// Wispy Config
+	eng.SITES_DIR = "./sites"
+	eng.PAGE_FILE_NAME = "page"
+	eng.FILE_EXT = ".hstm"
+	eng.SITE_CONFIG_NAME = "config.toml"
+	//
+	eng.SiteMap = make(map[string]SiteStructure)
+
 	for _, tag := range tagsMap {
 		eng.TagMap[tag.Name] = tag
 	}
@@ -65,7 +91,7 @@ func (eng *TemplateEngine) Init(tagsMap []TemplateTag, filterMap []TemplateFilte
 	return eng
 }
 
-func (engine *TemplateEngine) InitCtx(scopedDirectory string, data map[string]any) *RenderCtx {
+func (engine *TemplateEngine) InitCtx(scopedDirectory string, site *SiteStructure, data map[string]any) *RenderCtx {
 	return &RenderCtx{
 		Engine:          *engine,
 		Data:            data,
@@ -73,6 +99,7 @@ func (engine *TemplateEngine) InitCtx(scopedDirectory string, data map[string]an
 		Passed:          "",
 		Blocks:          make(map[string]string),
 		Props:           make(map[string]any),
+		Site:            site,
 		ScopedDirectory: scopedDirectory,
 		AssetRegistry: &AssetRegistry{
 			assets:   make(map[AssetType][]*Asset),
@@ -93,12 +120,12 @@ func (engine *TemplateEngine) InitCtx(scopedDirectory string, data map[string]an
 			seen: make(map[string]struct{}),
 		},
 		//
-		InternalFlags: make(map[string]any, 5),
+		InternalFlags: make(map[string]any, 1),
 	}
 }
 
 // Resolves variables from the RenderCtx's Data map.
-func (eng *TemplateEngine) GetFunc(ctx *RenderCtx, key string) any {
+func (eng *TemplateEngine) GetData(ctx *RenderCtx, key string) any {
 	if val, ok := ctx.Data[key]; ok {
 		return val
 	}
