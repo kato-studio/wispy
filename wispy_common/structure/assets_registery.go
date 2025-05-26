@@ -9,11 +9,11 @@ import (
 	"strings"
 )
 
-type AssetType int
+type AssetType string
 
 const (
-	CSS AssetType = iota
-	JS
+	CSS AssetType = "CSS"
+	JS            = "JS"
 )
 
 type Asset struct {
@@ -34,16 +34,12 @@ type Asset struct {
 }
 
 type AssetRegistry struct {
-	// mu       sync.Mutex
 	assets   map[AssetType][]*Asset
 	seen     map[string]struct{} // For deduplication
 	depGraph map[string][]string
 }
 
 func (r *AssetRegistry) Add(asset *Asset, dependencies ...string) error {
-	// r.mu.Lock()
-	// defer r.mu.Unlock()
-
 	// Initialize data structures if needed
 	if r.assets == nil {
 		r.assets = make(map[AssetType][]*Asset)
@@ -64,6 +60,7 @@ func (r *AssetRegistry) Add(asset *Asset, dependencies ...string) error {
 
 	// Check for duplicates
 	if _, exists := r.seen[key]; exists {
+		fmt.Println("Dup Found skipping: ", key)
 		return nil // No error, just skip
 	}
 
@@ -103,9 +100,9 @@ func (r *AssetRegistry) applyAssetDefaults(asset *Asset) {
 			asset.Priority = 100
 		case JS:
 			if asset.Module {
-				asset.Priority = 150
-			} else {
 				asset.Priority = 200
+			} else {
+				asset.Priority = 300
 			}
 		}
 	}
@@ -139,9 +136,6 @@ func (r *AssetRegistry) findAssetByKey(key string) (*Asset, bool) {
 }
 
 func (r *AssetRegistry) Render(t AssetType) string {
-	// r.mu.Lock()
-	// defer r.mu.Unlock()
-
 	var output strings.Builder
 
 	// Sort assets by priority
@@ -163,7 +157,7 @@ func (r *AssetRegistry) Render(t AssetType) string {
 		} else {
 			if t == CSS {
 				output.WriteString(fmt.Sprintf(`<link rel="stylesheet" href="%s">`, asset.Path))
-			} else {
+			} else if t == JS {
 				attrs := ""
 				if asset.Async {
 					attrs += " async"

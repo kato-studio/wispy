@@ -35,7 +35,7 @@ var ExtendsTag = TemplateTag{
 		childContent := raw[pos:closingPos]
 
 		// Read the parent template
-		sitePartialsPath := filepath.Join(ctx.ScopedDirectory, "partials")
+		sitePartialsPath := ctx.ScopedDirectory //filepath.Join(ctx.ScopedDirectory, "")
 		parentFilePath := filepath.Join(sitePartialsPath, parentName+".hstm")
 
 		parentContentAsBytes, err := os.ReadFile(parentFilePath)

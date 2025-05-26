@@ -14,6 +14,19 @@ import (
 var LayoutTag = TemplateTag{
 	Name: "layout",
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (new_pos int, errs []error) {
+		skipLayout := ctx.Request.Header.Get("HX-Skip-Layout")
+		hxBoosted := ctx.Request.Header.Get("HX-Boosted")
+
+		closingPos := len(raw)
+		if strings.ToLower(skipLayout) == "true" && strings.ToLower(hxBoosted) != "true" {
+			renderErrs := core.Render(ctx, sb, raw[pos:closingPos])
+			if len(renderErrs) > 0 {
+				errs = append(errs, renderErrs...)
+			}
+
+			return pos, errs
+		}
+
 		// Extract the layout template name from the tag contents
 		layoutName := strings.Trim(tag_contents, " \"'")
 		if layoutName == "" {
@@ -21,13 +34,10 @@ var LayoutTag = TemplateTag{
 			return pos, errs
 		}
 
-		closingPos := len(raw)
-
 		// Get the content that will be wrapped by the layout
 		content := raw[pos:closingPos]
 
-		// Read the layout template file
-		sitePartialsPath := filepath.Join(ctx.ScopedDirectory, "partials")
+		sitePartialsPath := filepath.Join(ctx.ScopedDirectory, "layouts")
 		layoutFilePath := filepath.Join(sitePartialsPath, layoutName+".hstm")
 
 		layoutContentAsBytes, err := os.ReadFile(layoutFilePath)
@@ -44,7 +54,7 @@ var LayoutTag = TemplateTag{
 		// Update for use in asset imports
 		ctx.CurrentTemplatePath = layoutFilePath
 
-		// Render contents passed to layout
+		// Render contents pass to layout
 		var tempBuilder strings.Builder
 		renderErrs := core.Render(ctx, &tempBuilder, content)
 		if len(renderErrs) > 0 {

@@ -3,12 +3,10 @@ package auth
 import (
 	"database/sql"
 	"fmt"
-
-	"github.com/google/uuid"
 )
 
 // Role management functions
-func AssignRoleToUser(db *sql.DB, userID uuid.UUID, roleName string) error {
+func AssignRoleToUser(db *sql.DB, userID string, roleName string) error {
 	// First get role ID
 	var roleID int
 	err := db.QueryRow("SELECT id FROM roles WHERE name = ?", roleName).Scan(&roleID)
@@ -17,13 +15,13 @@ func AssignRoleToUser(db *sql.DB, userID uuid.UUID, roleName string) error {
 	}
 
 	_, err = db.Exec(`
-		INSERT OR IGNORE INTO user_roles (user_id, role_id)
+		INSERT OR IGNORE INTO user_roles (user_uuid, role_id)
 		VALUES (?, ?)
 	`, userID, roleID)
 	return err
 }
 
-func RemoveRoleFromUser(db *sql.DB, userID uuid.UUID, roleName string) error {
+func RemoveRoleFromUser(db *sql.DB, userID string, roleName string) error {
 	var roleID int
 	err := db.QueryRow("SELECT id FROM roles WHERE name = ?", roleName).Scan(&roleID)
 	if err != nil {
@@ -32,27 +30,27 @@ func RemoveRoleFromUser(db *sql.DB, userID uuid.UUID, roleName string) error {
 
 	_, err = db.Exec(`
 		DELETE FROM user_roles
-		WHERE user_id = ? AND role_id = ?
+		WHERE user_uuid = ? AND role_id = ?
 	`, userID, roleID)
 	return err
 }
-func UserHasRole(db *sql.DB, userID uuid.UUID, roleName string) (bool, error) {
+func UserHasRole(db *sql.DB, userID string, roleName string) (bool, error) {
 	var exists bool
 	err := db.QueryRow(`
 		SELECT EXISTS(
 			SELECT 1 FROM user_roles ur
 			JOIN roles r ON ur.role_id = r.id
-			WHERE ur.user_id = ? AND r.name = ?
+			WHERE ur.user_uuid = ? AND r.name = ?
 		)
 	`, userID, roleName).Scan(&exists)
 	return exists, err
 }
 
-func GetUserRoles(db *sql.DB, userID uuid.UUID) ([]string, error) {
+func GetUserRoles(db *sql.DB, userID string) ([]string, error) {
 	rows, err := db.Query(`
 		SELECT r.name FROM user_roles ur
 		JOIN roles r ON ur.role_id = r.id
-		WHERE ur.user_id = ?
+		WHERE ur.user_uuid = ?
 	`, userID)
 	if err != nil {
 		return nil, err

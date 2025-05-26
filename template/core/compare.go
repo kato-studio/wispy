@@ -16,24 +16,19 @@ func ResolveCondition(ctx *structure.RenderCtx, condition string) (val bool, err
 		return false, []error{fmt.Errorf("no conditions within \"%s\" statement:", condition)}
 	}
 
-	// first value
-	if len(errs) > 0 {
-		return false, errs
-	}
-	//
 	fv := values[0]
 	if strings.HasPrefix(fv, ".") && vlen == 1 {
-		value, verr := ResolveVariable(ctx, fv)
-		if verr != nil {
-			errs = append(errs, verr)
+		value, err := ResolveVariable(ctx, fv)
+		if err != nil {
+			errs = append(errs, err)
+			return false, errs
 		}
-		if value != nil && value != false {
-			return true, errs
-		} else {
+
+		// this if statement should work.. but doesn't?
+		if value == nil || value == "" || value == false {
 			return false, errs
 		}
 	}
-	//
 
 	//
 	if vlen == 3 {

@@ -59,7 +59,7 @@ func FindDelim(ctx *structure.RenderCtx, raw string, pos int) (int, int) {
 
 func ResolveTag(ctx *structure.RenderCtx, sb *strings.Builder, pos int, tag_contents, raw string) (new_pos int, errs []error) {
 	tagName, contents, tagNameExists := strings.Cut(tag_contents, " ")
-	if !tagNameExists && len(tagName) < 3 {
+	if !tagNameExists && len(tagName) < 1 {
 		return pos, []error{fmt.Errorf("could not resolve tag name in \"" + tag_contents + "\"")}
 	}
 

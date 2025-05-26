@@ -3,9 +3,11 @@ package template
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -35,6 +37,7 @@ func RenderRoute(engine *structure.TemplateEngine, ctx *structure.RenderCtx, req
 	routeKey := site.Domain + requestPath
 	route, exists := site.Routes[routeKey]
 	if !exists {
+		http.Redirect(*ctx.ResponseWriter, ctx.Request, "/error?code=404&source="+requestPath+"&error=route not found", http.StatusSeeOther)
 		return "", fmt.Errorf("route %s not found", routeKey)
 	}
 
@@ -43,19 +46,48 @@ func RenderRoute(engine *structure.TemplateEngine, ctx *structure.RenderCtx, req
 		data = make(map[string]any)
 	}
 
+	// Add easy access to URL Query Params
+	// Initialize URL.Query structure if not exists
+	if _, ok := data["URL"].(map[string]any); !ok {
+		data["URL"] = make(map[string]any)
+	}
+	if _, ok := data["URL"].(map[string]any)["Query"].(map[string]any); !ok {
+		data["URL"].(map[string]any)["Query"] = make(map[string]any)
+	}
+	queryMap := data["URL"].(map[string]any)["Query"].(map[string]any)
+	// Add query parameters
+	for key, values := range r.URL.Query() {
+		if len(values) > 1 {
+			queryMap[key] = values
+		} else {
+			queryMap[key] = values[0]
+		}
+	}
+
 	// Read and merge JSON data if the file exist
 	jsonPath := filepath.Join(filepath.Dir(route.Path), "data_en.json")
 	jsonAsBytes, err := os.ReadFile(jsonPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read JSON file: %w", err)
+		log.Println("data_en.json not found")
+		log.Printf("failed to read JSON file: %s \n", err.Error())
+	} else {
+		var jsonData map[string]any
+		if err := json.Unmarshal(jsonAsBytes, &jsonData); err != nil {
+			return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
+		}
+
+		// Merge JSON data with existing data
+		for k, v := range jsonData {
+			data[k] = v
+		}
 	}
-	var jsonData map[string]any
-	if err := json.Unmarshal(jsonAsBytes, &jsonData); err != nil {
-		return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
-	}
-	// Merge JSON data with existing data
-	for k, v := range jsonData {
-		data[k] = v
+
+	rootLayoutPath := path.Join(ctx.ScopedDirectory, "layouts", "root.hstm")
+	rootLayoutAsBytes, err := os.ReadFile(rootLayoutPath)
+	if err != nil {
+		fmt.Println(err)
+		slog.Error("Failed to read root layout at ", rootLayoutPath, ": ", err)
+		return "", fmt.Errorf("Failed to read root layout at %s", rootLayoutPath)
 	}
 
 	templateAsBytes, err := os.ReadFile(route.Path)
@@ -69,7 +101,15 @@ func RenderRoute(engine *structure.TemplateEngine, ctx *structure.RenderCtx, req
 	ctx.Data = data
 	renderErrors := Render(ctx, &sb, string(templateAsBytes))
 
-	// TODO: only log errors if debug is active
+	// Render the layouts/root.hstm
+	ctx.Passed = sb.String()
+	var rootSb strings.Builder
+	rootRenderErrs := Render(ctx, &rootSb, string(rootLayoutAsBytes))
+	if len(rootRenderErrs) > 0 {
+		renderErrors = append(renderErrors, rootRenderErrs...)
+	}
+
+	// TODO: better error logging using built-in go logger with better highlighting
 	for ei, err := range renderErrors {
 		if ei == 0 {
 			fmt.Println(colorGrey + "-------------------" + colorReset)
@@ -80,7 +120,7 @@ func RenderRoute(engine *structure.TemplateEngine, ctx *structure.RenderCtx, req
 		}
 	}
 
-	return sb.String(), err
+	return rootSb.String(), err
 }
 
 // SetupWispyCache ensures the .wispy cache directory exists.

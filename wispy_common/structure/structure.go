@@ -16,15 +16,15 @@ type RenderCtx struct {
 	Props map[string]any
 	// Defined block for in file partials.
 	Blocks map[string]string
-	// Stores rendered layout content ->
+	// "Passed" stores ->
 	// The layout content needs to be render first to ensure all operations are handled
-	// for example setting meta/seo tags
+	// so meta tags as well as import tags can be resolved and duped
 	Passed string
 	// Slots for block content.
 	Slots map[string]string
 	// The current directory the template engine should scan for sub folders like partials
 	// This will be set to the site directory if using the wispy-engine but is being set as a string option to allow
-	// few changes to support template engine use outsite of the wispy-engine context
+	// few changes to support template engine use outside of the wispy-engine context
 	CurrentTemplatePath string
 	//
 	Site            *SiteStructure
@@ -44,7 +44,7 @@ type RenderCtx struct {
 	HeadTags *HeadTagRegistry
 }
 
-// reperesnets the settings/presets of the current template engine instances
+// represents the settings/presets of the current template engine instances
 type TemplateEngine struct {
 	// starting deliminator - default "{%"
 	DelimStart string
@@ -68,18 +68,20 @@ type TemplateEngine struct {
 // Base function to create TemplateEngine instance used to to control base template settings
 // RenderCtx references the Template engine to for engine settings like registered tags & filters
 func (eng *TemplateEngine) Init(tagsMap []TemplateTag, filterMap []TemplateFilter) *TemplateEngine {
-	eng.DelimStart = "{%"
-	eng.DelimEnd = "%}"
-	eng.TagMap = map[string]TemplateTag{}
-
 	// Wispy Config
 	eng.SITES_DIR = "./sites"
 	eng.PAGE_FILE_NAME = "page"
 	eng.FILE_EXT = ".hstm"
 	eng.SITE_CONFIG_NAME = "config.toml"
 	//
+	// Engine Config
+	eng.DelimStart = "{%"
+	eng.DelimEnd = "%}"
+	//
+	eng.TagMap = map[string]TemplateTag{}
+	//
 	eng.SiteMap = make(map[string]SiteStructure)
-
+	//
 	for _, tag := range tagsMap {
 		eng.TagMap[tag.Name] = tag
 	}
@@ -114,7 +116,7 @@ func (engine *TemplateEngine) InitCtx(scopedDirectory string, site *SiteStructur
 				},
 				&HeadTag{
 					TagName:    "meta",
-					Attributes: []string{`name="viewport" content="width=device-width, initial-scale=1.0"`},
+					Attributes: []string{`content="initial-scale=1.0,maximum-scale=1,width=device-width,viewport-fit=cover"`},
 				},
 			},
 			seen: make(map[string]struct{}),

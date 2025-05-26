@@ -157,7 +157,7 @@ func FindOrCreateDiscordUser(DB *sql.DB, discordUser DiscordUser) (*User, error)
 	// Look for existing provider link
 	var userUUID string
 	err = DB.QueryRow(`
-		SELECT user_id FROM user_auth_providers
+		SELECT user_uuid FROM user_auth_providers
 		WHERE auth_method_id = ? AND provider_id = ?
 	`, authMethodID, discordUser.ID).Scan(&userUUID)
 
@@ -175,7 +175,7 @@ func FindOrCreateDiscordUser(DB *sql.DB, discordUser DiscordUser) (*User, error)
 	}
 
 	user = User{
-		UUID:     uuid.New(),
+		UUID:     uuid.New().String(),
 		Username: username,
 		Email:    discordUser.Email,
 	}
@@ -191,8 +191,8 @@ func FindOrCreateDiscordUser(DB *sql.DB, discordUser DiscordUser) (*User, error)
 	err = tx.QueryRow(`
 		INSERT INTO users (uuid, username, email)
 		VALUES (?, ?, ?)
-		RETURNING id
-	`, user.UUID.String(), user.Username, user.Email).Scan(&user.ID)
+		RETURNING uuid
+	`, user.UUID, user.Username, user.Email).Scan(&user.UUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -200,10 +200,10 @@ func FindOrCreateDiscordUser(DB *sql.DB, discordUser DiscordUser) (*User, error)
 	// Link Discord account
 	_, err = tx.Exec(`
 		INSERT INTO user_auth_providers (
-			user_id, auth_method_id, provider_id,
+			user_uuid, auth_method_id, provider_id,
 			provider_username, provider_email
 		) VALUES (?, ?, ?, ?, ?)
-	`, user.ID, authMethodID, discordUser.ID,
+	`, user.UUID, authMethodID, discordUser.ID,
 		discordUser.Username, discordUser.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to link discord account: %w", err)
@@ -211,9 +211,9 @@ func FindOrCreateDiscordUser(DB *sql.DB, discordUser DiscordUser) (*User, error)
 
 	// Assign default role
 	_, err = tx.Exec(`
-		INSERT INTO user_roles (user_id, role_id)
+		INSERT INTO user_roles (user_uuid, role_id)
 		SELECT ?, id FROM roles WHERE name = 'user'
-	`, user.ID)
+	`, user.UUID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assign default role: %w", err)
 	}

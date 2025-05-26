@@ -2,8 +2,6 @@ package auth
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // AuthConfig holds configuration for authentication
@@ -19,9 +17,9 @@ var dur7says = int((time.Hour * 24 * 7).Seconds())
 
 type User struct {
 	ID        int
-	UUID      uuid.UUID
+	UUID      string
 	Username  string
 	Email     string
-	UpdatedAt time.Duration
-	CreatedAt time.Duration
+	UpdatedAt time.Time
+	CreatedAt time.Time
 }

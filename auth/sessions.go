@@ -21,13 +21,13 @@ func (s *SQLiteSessionsInterface) Init() error {
 	_, err := s.db.Exec(`
         CREATE TABLE IF NOT EXISTS sessions (
             token TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
+            user_uuid TEXT NOT NULL,
             expires_at TIMESTAMP NOT NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(uuid) ON DELETE CASCADE
+            FOREIGN KEY (user_uuid) REFERENCES users(uuid) ON DELETE CASCADE
         );
 
-        CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_sessions_user_uuid ON sessions(user_uuid);
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
     `)
 	return err
@@ -37,7 +37,7 @@ func (s *SQLiteSessionsInterface) Get(token string) (string, time.Time, error) {
 	var userID string
 	var expiresAt time.Time
 	err := s.db.QueryRow(`
-        SELECT user_id, expires_at FROM sessions
+        SELECT user_uuid, expires_at FROM sessions
         WHERE token = ? AND expires_at > CURRENT_TIMESTAMP
     `, token).Scan(&userID, &expiresAt)
 	if err != nil {
@@ -46,12 +46,12 @@ func (s *SQLiteSessionsInterface) Get(token string) (string, time.Time, error) {
 	return userID, expiresAt, nil
 }
 
-func (s *SQLiteSessionsInterface) Update(token string, userID string, duration time.Duration) error {
+func (s *SQLiteSessionsInterface) Update(token string, userUUID string, duration time.Duration) error {
 	expiresAt := time.Now().Add(duration)
 	_, err := s.db.Exec(`
-        INSERT OR REPLACE INTO sessions (token, user_id, expires_at)
+        INSERT OR REPLACE INTO sessions (token, user_uuid, expires_at)
         VALUES (?, ?, ?)
-    `, token, userID, expiresAt)
+    `, token, userUUID, expiresAt)
 	return err
 }
 
@@ -106,10 +106,9 @@ func GetUserFromSession(SessionDB *sql.DB, UserDB *sql.DB, r *http.Request) (*Us
 
 	var user User
 	err = UserDB.QueryRow(`
-        SELECT id, uuid, username, email, created_at, updated_at
+        SELECT uuid, username, email, created_at, updated_at
         FROM users WHERE id = ?
     `, userID).Scan(
-		&user.ID,
 		&user.UUID,
 		&user.Username,
 		&user.Email,
@@ -136,7 +135,7 @@ func CreateSession(SessionDB *sql.DB, w http.ResponseWriter, r *http.Request, us
 	var Sessions = SQLiteSessionsInterface{db: SessionDB}
 
 	// Store session in database
-	err = Sessions.Update(token, user.UUID.String(), time.Hour*24*7) // 1 week
+	err = Sessions.Update(token, user.UUID, time.Hour*24*7) // 1 week
 	if err != nil {
 		return fmt.Errorf("failed to store session: %w", err)
 	}

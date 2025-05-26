@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -32,25 +33,12 @@ func SitePublicFolderHandler(engine *structure.TemplateEngine, w http.ResponseWr
 	}
 
 	// Serve public assets
-	// targetFile := filepath.Join(core.Wispy.SITES_DIR, domain, requestPath)
-	// http.StripPrefix("/public/", http.FileServer(http.Dir("static")))
 	targetFile := filepath.Join(engine.SITES_DIR, domain, requestPath)
 	fmt.Println(targetFile)
 	http.ServeFile(w, r, targetFile)
-	// if _, err := os.Stat(targetFile); err != nil {
-	// 	http.Error(w, "File not found", http.StatusNotFound)
-	// 	return
-	// }
-	// // http.ServeFile(w, r, targetFile)
-	// rawBytes, err := os.ReadFile(targetFile)
-	// if err != nil {
-	// 	http.Error(w, "File cloud not be read", http.StatusNotFound)
-	// 	return
-	// }
-	// w.Write(rawBytes)
-}
 
-func SiteRouteHandler(engine *structure.TemplateEngine, w http.ResponseWriter, r *http.Request) {
+}
+func SiteAuthRouteHandler(engine *structure.TemplateEngine, w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	domain := r.Host
 
@@ -61,13 +49,33 @@ func SiteRouteHandler(engine *structure.TemplateEngine, w http.ResponseWriter, r
 		return
 	}
 
-	data := map[string]any{}
-
-	// Render the route
-	// Set up the rendering context using NewRenderCtx (which initializes Internal automatically).
 	scopedDirectory := filepath.Join(engine.SITES_DIR, site.Domain)
-	// ctx := template.NewRenderCtx(engine, scopedDirectory, data)
+	// Handle public content
+	path := filepath.Clean(r.URL.Path)
+	// if file extension check if there is a valid file in public directory to serve
+	if filepath.Ext(path) != "" {
+		// Serve public content if available
+		root := os.DirFS(filepath.Join(scopedDirectory, "public"))
+		f, err := root.Open(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// File doesn't exist, continue
+			}
+			fmt.Println("error opening public file:", path)
+		} else {
+			f.Close()
+			stat, err := f.Stat()
+			if err != nil && !stat.IsDir() {
+				// File exists and is not a directory - serve it
+				http.ServeFile(w, r, path)
+				return
+			}
+		}
+	}
+	//
+	data := map[string]any{}
 	ctx := engine.InitCtx(scopedDirectory, &site, data)
+
 	//
 	page, err := RenderRoute(engine, ctx, r.URL.Path, data, w, r)
 	if err != nil {

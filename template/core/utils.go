@@ -65,23 +65,23 @@ func ResolveValue(ctx *structure.RenderCtx, expr string) (any, error) {
 		return nil, fmt.Errorf("empty expression")
 	}
 
-	// Check if it's a variable (starts with .)
 	if strings.HasPrefix(expr, ".") {
+		// Resolve the value to be assigned from ctx Variable
 		return ResolveVariable(ctx, expr)
+	}
+
+	// Check if it's a boolean
+	if expr == "true" || strings.ToLower(expr) == "true" {
+		return true, nil
+	}
+	if expr == "false" || strings.ToLower(expr) == "false" {
+		return false, nil
 	}
 
 	// Check if it's a string literal
 	if (strings.HasPrefix(expr, `"`) && strings.HasSuffix(expr, `"`)) ||
 		(strings.HasPrefix(expr, `'`) && strings.HasSuffix(expr, `'`)) {
 		return expr[1 : len(expr)-1], nil
-	}
-
-	// Check if it's a boolean
-	if expr == "true" {
-		return true, nil
-	}
-	if expr == "false" {
-		return false, nil
 	}
 
 	// Check if it's a numeric value
@@ -92,8 +92,7 @@ func ResolveValue(ctx *structure.RenderCtx, expr string) (any, error) {
 		return num, nil
 	}
 
-	// Check if it's a variable without . prefix (assuming it's a global or other scope)
-	return ResolveVariable(ctx, expr)
+	return nil, fmt.Errorf("could not resolve expression " + expr)
 }
 
 // ---

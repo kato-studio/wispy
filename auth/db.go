@@ -3,7 +3,7 @@ package auth
 import (
 	"database/sql"
 	"fmt"
-	"strings"
+	"slices"
 )
 
 func GetUserByID(db *sql.DB, id string) (*User, error) {
@@ -12,7 +12,7 @@ func GetUserByID(db *sql.DB, id string) (*User, error) {
 		SELECT uuid, username, email, created_at, updated_at
 		FROM users WHERE id = ?
 	`, id).Scan(
-		&user.ID,
+		&user.UUID,
 		&user.Username,
 		&user.Email,
 		&user.CreatedAt,
@@ -24,13 +24,13 @@ func GetUserByID(db *sql.DB, id string) (*User, error) {
 	return &user, nil
 }
 
-func GetUserByUUID(db *sql.DB, id string) (*User, error) {
+func GetUserByUUID(db *sql.DB, uuid string) (*User, error) {
 	var user User
 	err := db.QueryRow(`
 		SELECT uuid, username, email, created_at, updated_at
 		FROM users WHERE uuid = ?
-	`, id).Scan(
-		&user.ID,
+	`, uuid).Scan(
+		&user.UUID,
 		&user.Username,
 		&user.Email,
 		&user.CreatedAt,
@@ -48,23 +48,36 @@ func CheckUserRoles(db *sql.DB, userID string, requiredRoles []string) (bool, er
 		return false, nil
 	}
 
-	query := `
-		SELECT COUNT(*)
-		FROM user_roles ur
-		JOIN roles r ON ur.role_id = r.id
-		WHERE ur.user_id = ? AND r.name IN (` + strings.Repeat("?,", len(requiredRoles)-1) + `?)`
-
-	args := make([]interface{}, len(requiredRoles)+1)
-	args[0] = userID
-	for i, role := range requiredRoles {
-		args[i+1] = role
-	}
-
-	var count int
-	err := db.QueryRow(query, args...).Scan(&count)
+	roles, err := GetUserRoles(db, userID)
 	if err != nil {
 		return false, fmt.Errorf("database query failed: %w", err)
 	}
 
-	return count > 0, nil
+	// check if user is missing required role
+	for _, reqRole := range requiredRoles {
+		if slices.Contains(roles, reqRole) == false {
+			return false, fmt.Errorf("user: [%s] is missing role (%s)  \n", userID, reqRole)
+		}
+	}
+
+	// query := `
+	// 	SELECT COUNT(*)
+	// 	FROM user_roles ur
+	// 	JOIN roles r ON ur.role_id = r.id
+	// 	WHERE ur.user_id = ? AND r.name IN (` + strings.Repeat("?,", len(requiredRoles)-1) + `?)`
+
+	// fmt.Println(query)
+
+	// args := make([]any, len(requiredRoles)+1)
+	// args[0] = userID
+	// for i, role := range requiredRoles {
+	// 	args[i+1] = role
+	// }
+
+	// var count int
+	// err := db.QueryRow(query, args...).Scan(&count)
+	// if err != nil {
+	// 	return false, fmt.Errorf("database query failed: %w", err)
+	// }
+	return len(roles) > 0, nil
 }

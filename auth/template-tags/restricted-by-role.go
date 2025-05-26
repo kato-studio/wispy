@@ -52,12 +52,10 @@ var RestrictedByRole = structure.TemplateTag{
 
 		// If user has access, render the content
 		if hasAccess {
-			return 0, nil
+			return pos, nil
 		}
 
-		writer := *ctx.ResponseWriter
-		writer.WriteHeader(401)
-		writer.Write([]byte("You do not have the required role to access this route."))
+		http.Redirect(*ctx.ResponseWriter, ctx.Request, "/error?code=401&source="+ctx.Request.URL.Path+"&error=failed access check", http.StatusSeeOther)
 
 		// If no access, don't render anything
 		return len(raw), errs
