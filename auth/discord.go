@@ -78,9 +78,6 @@ func HandleDiscordLogin(w http.ResponseWriter, r *http.Request) {
 
 func HandleDiscordCallback(SessionDB, UserDB *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Verify state matches
-	fmt.Println("--- Cookies ---")
-	fmt.Println(r.Cookies())
-	fmt.Println("------")
 	stateCookie, err := r.Cookie("oauth_state")
 	if err != nil {
 		http.Error(w, "Missing state cookie", http.StatusBadRequest)
@@ -161,9 +158,12 @@ func FindOrCreateDiscordUser(DB *sql.DB, discordUser DiscordUser) (*User, error)
 		WHERE auth_method_id = ? AND provider_id = ?
 	`, authMethodID, discordUser.ID).Scan(&userUUID)
 
+	fmt.Println("userUUID:", userUUID)
+	fmt.Println("err:", err)
+
 	if err == nil {
 		// Found existing user
-		return GetUserByID(DB, userUUID)
+		return GetUserByUUID(DB, userUUID)
 	} else if err != sql.ErrNoRows {
 		return nil, fmt.Errorf("failed to query user auth providers: %w", err)
 	}

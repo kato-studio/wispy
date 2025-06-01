@@ -11,7 +11,7 @@
   "files.associations": {
     "*.hstm": "liquid",
     "*.js": "javascript",
-    "*.log": "log",
+    "*.log": "log"
   },
   "files.watcherExclude": {
     "**/.git": true,
