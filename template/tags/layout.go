@@ -51,9 +51,6 @@ var LayoutTag = TemplateTag{
 			return pos, errs
 		}
 
-		// Update for use in asset imports
-		ctx.CurrentTemplatePath = layoutFilePath
-
 		// Render contents pass to layout
 		var tempBuilder strings.Builder
 		renderErrs := core.Render(ctx, &tempBuilder, content)
@@ -61,6 +58,10 @@ var LayoutTag = TemplateTag{
 			errs = append(errs, renderErrs...)
 		}
 		ctx.Passed = tempBuilder.String()
+
+		// Update for use in asset imports
+		// prevTemplatePath := ctx.CurrentTemplatePath
+		ctx.CurrentTemplatePath = layoutFilePath
 
 		// Render the layout template
 		renderErrs = core.Render(ctx, sb, string(layoutContentAsBytes))

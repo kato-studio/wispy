@@ -15,8 +15,12 @@ var ImportTag = TemplateTag{
 	Name: "import",
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, tag_contents, raw string, pos int) (int, []error) {
 		var errs []error
-		var options = parseAssetTagOptions(tag_contents)
-		var path = options["path"]
+		// Remove all line breaks before parsing options
+		cleaned := strings.ReplaceAll(tag_contents, "\n", "")
+		cleaned = strings.ReplaceAll(cleaned, "\r", "")
+		var options = parseAssetTagOptions(cleaned)
+		var path = strings.ReplaceAll(options["path"], " ", "")
+		var _type = options["type"]
 		var external = options["external"] == "true"
 		var isInline = options["inline"] == "true"
 		var contentStr = ""
@@ -63,8 +67,8 @@ var ImportTag = TemplateTag{
 		// Get priority if specified
 		priority, _ := strconv.Atoi(options["priority"])
 
-		switch ext {
-		case ".css":
+		switch {
+		case ext == ".css" || _type == "css" || _type == "text/css":
 			asset := structure.Asset{
 				Path:      path,
 				Type:      structure.CSS,
@@ -79,7 +83,7 @@ var ImportTag = TemplateTag{
 			}
 			ctx.AssetRegistry.Add(&asset)
 
-		case ".js":
+		case ext == ".js" || _type == "js" || _type == "text/js":
 			asset := structure.Asset{
 				Path:      path,
 				Type:      structure.JS,

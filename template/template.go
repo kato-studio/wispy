@@ -75,7 +75,8 @@ var DefaultEngineTags = []structure.TemplateTag{
 	tags.PassedTag,
 	//
 	tags.HeadTag,
-	tags.FooterAssetsTag,
+	tags.CssAssetsTag,
+	tags.JsAssetsTag,
 	tags.TitleTag,
 	tags.MetaTag,
 	tags.CSSTag,

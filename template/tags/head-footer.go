@@ -11,6 +11,13 @@ var HeadTag = TemplateTag{
 	Name: "root-head",
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, _, _ string, pos int) (int, []error) {
 		sb.WriteString(ctx.HeadTags.Render())
+		return pos, nil
+	},
+}
+
+var CssAssetsTag = TemplateTag{
+	Name: "root-css",
+	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, _, _ string, pos int) (int, []error) {
 		sb.WriteString(ctx.AssetRegistry.Render(structure.CSS))
 		return pos, nil
 	},
@@ -42,10 +49,9 @@ var MetaTag = TemplateTag{
 	},
 }
 
-var FooterAssetsTag = TemplateTag{
-	Name: "root-footer",
+var JsAssetsTag = TemplateTag{
+	Name: "root-js",
 	Render: func(ctx *structure.RenderCtx, sb *strings.Builder, _, _ string, pos int) (int, []error) {
-		sb.WriteString("<!-- imports go here -->")
 		sb.WriteString(ctx.AssetRegistry.Render(structure.JS))
 		return pos, nil
 	},

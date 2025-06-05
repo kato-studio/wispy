@@ -96,6 +96,8 @@ func RenderRoute(engine *structure.TemplateEngine, ctx *structure.RenderCtx, req
 		slog.Error("Failed to read page template at ", route.Path, ": ", err)
 		return "", fmt.Errorf("route %s not found", routeKey)
 	}
+	// Update for use in asset imports
+	ctx.CurrentTemplatePath = strings.TrimSuffix(route.Path, ctx.Engine.PAGE_FILE_NAME)
 	//
 	var sb strings.Builder
 	ctx.Data = data

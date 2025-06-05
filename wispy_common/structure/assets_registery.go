@@ -144,32 +144,33 @@ func (r *AssetRegistry) Render(t AssetType) string {
 	})
 
 	for _, asset := range r.assets[t] {
-		if asset.IsInline {
-			if t == CSS {
+		if t == CSS {
+			if asset.IsInline {
 				output.WriteString("<style>")
 				output.WriteString(asset.Content)
 				output.WriteString("</style>")
 			} else {
-				output.WriteString("<script>")
+				output.WriteString(fmt.Sprintf(`<link href="%s" rel="stylesheet"  type="text/css">`, asset.Path))
+			}
+		} else if t == JS {
+			attrs := ""
+			if asset.Async {
+				attrs += " async"
+			}
+			if asset.Defer {
+				attrs += " defer"
+			}
+			if asset.Module {
+				attrs += " type=\"module\""
+			}
+			//
+			if asset.IsInline {
+				output.WriteString(fmt.Sprintf(`<script %s>`, attrs))
 				output.WriteString(asset.Content)
-				output.WriteString("</script>")
+			} else {
+				output.WriteString(fmt.Sprintf(`<script src="%s"%s>`, asset.Path, attrs))
 			}
-		} else {
-			if t == CSS {
-				output.WriteString(fmt.Sprintf(`<link rel="stylesheet" href="%s">`, asset.Path))
-			} else if t == JS {
-				attrs := ""
-				if asset.Async {
-					attrs += " async"
-				}
-				if asset.Defer {
-					attrs += " defer"
-				}
-				if asset.Module {
-					attrs += " type=\"module\""
-				}
-				output.WriteString(fmt.Sprintf(`<script src="%s"%s></script>`, asset.Path, attrs))
-			}
+			output.WriteString("</script>")
 		}
 	}
 

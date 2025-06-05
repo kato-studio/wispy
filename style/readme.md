@@ -1,6 +1,8 @@
 # Removed, to be replaced with DaisyUI 5.0! after some testing!
 ## backedup to branch `backup-POC-style-engine`
 
+### component css
+https://github.com/saadeghi/daisyui/tree/master/packages/daisyui
 
 ## https://daisyui.com/docs/v5
   - Install

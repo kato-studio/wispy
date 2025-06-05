@@ -1,15 +1,15 @@
 {
-  "cSpell.words": [
-    "atomicstyle",
-    "cutset",
-    "datatypes",
-    "ebnf",
-    "labstack",
-    "pongo",
-    "tmpl"
-  ],
+  // "cSpell.words": [
+  //   "atomicstyle",
+  //   "cutset",
+  //   "datatypes",
+  //   "ebnf",
+  //   "labstack",
+  //   "pongo",
+  //   "tmpl"
+  // ],
   "files.associations": {
-    "*.hstm": "liquid",
+    "*.hstm": "html",
     "*.js": "javascript",
     "*.log": "log"
   },
@@ -20,4 +20,14 @@
     "**/.cache" : true,
     "**/.wispy" : true
   },
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "file": "./.vscode/daisyui.md"
+    }
+  ],
+  "cSpell.words": [
+    "fieldset",
+    "rootscrollgutter",
+    "rootscrolllock"
+  ]
 }
